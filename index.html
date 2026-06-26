@@ -348,10 +348,10 @@
 
     <script>
         // ==========================================
-        // ⚙️ 大模型配置：请在此输入有效的 DeepSeek API Key
+        // ⚙️ 大模型配置（已为您硬编码写入您的专属 API Key）
         // ==========================================
         const CONFIG = {
-            apiKey: "在这里填入你的_DEEPSEEK_API_KEY", 
+            apiKey: "sk-7ab387a1cb474f6db6976ea3a8aef8f5", 
             apiUrl: "https://api.deepseek.com/v1", 
             apiModel: "deepseek-chat" 
         };
@@ -362,18 +362,16 @@
             affection: 60,
             isIgnoring: false,  
             ignoreCount: 0,
-            isProcessing: false // 全局状态锁
+            isProcessing: false 
         };
 
-        // 彻底、极端安全的过滤函数：
-        // 仅允许：大写字母、小写字母、数字、连字符(-)、下划线(_)
-        // 这样可以 100% 确保过滤掉任何空白、中文标点、全角符号及不可见字符
+        // 强力清洗：仅保留字母、数字、连字符、下划线，彻底排除任何潜在的非 ASCII 字符，避免 Headers 报错
         function getStrictCleanKey() {
             if (!CONFIG || typeof CONFIG.apiKey !== 'string') return "";
             return CONFIG.apiKey.replace(/[^A-Za-z0-9\-_]/g, "").trim();
         }
 
-        // 统一控制所有组件的状态
+        // 统一控制交互状态
         function setInteractiveState(enabled) {
             state.isProcessing = !enabled;
             
@@ -392,24 +390,24 @@
             }
         }
 
-        // 调用大模型对话接口
+        // 调用大模型
         async function fetchAIResponse(userMessage) {
             const cleanKey = getStrictCleanKey();
 
-            // 如果 Key 长度不足，或者依然是默认模板名称，直接降级
-            if (!cleanKey || cleanKey.length < 15 || cleanKey.includes("sk-7ab387a1cb474f6db6976ea3a8aef8f5")) {
+            // 若清洗后不满足 API Key 最低要求，则启动本地回退机制
+            if (!cleanKey || cleanKey.length < 15 || cleanKey.includes("API_KEY")) {
                 return localFallbackChat(userMessage);
             }
 
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 6000); // 6秒超时
+            const timeoutId = setTimeout(() => controller.abort(), 6000); // 6秒看门狗超时
 
             try {
                 const response = await fetch(`${CONFIG.apiUrl}/chat/completions`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${cleanKey}` // cleanKey 此时 100% 为 ASCII 字符
+                        'Authorization': `Bearer ${cleanKey}` // 此时 cleanKey 绝对是 100% 安全的 ASCII
                     },
                     body: JSON.stringify({
                         model: CONFIG.apiModel,
@@ -433,12 +431,12 @@
                 return data.choices[0].message.content;
             } catch (err) {
                 clearTimeout(timeoutId);
-                console.error("API 报错:", err);
+                console.error("API 连接失败:", err);
                 
                 if (err.name === 'AbortError') {
-                    return "[连接超时，咻咻自动切换回本地模式] 哼，半天没反应，咻咻不想等了！\n" + localFallbackChat(userMessage);
+                    return "[连接超时，咻咻自动切换回本地模式] 哼，半天没反应，咻咻等得不耐烦了！\n" + localFallbackChat(userMessage);
                 }
-                return `[脑电波连接不顺畅，暂时无法联网...] \n${localFallbackChat(userMessage)}`;
+                return `[脑电波暂时断开连接...] \n${localFallbackChat(userMessage)}`;
             }
         }
 
@@ -459,7 +457,7 @@
             `;
         }
 
-        // 本地降级语料库
+        // 本地降级语料
         function localFallbackChat(text) {
             if (text.includes("你好") || text.includes("嗨") || text.includes("喂")) {
                 return "咻！你好。盯着咻咻的大方眼干嘛？没看过这么标准又聪明的像素猫咪吗？";
@@ -478,7 +476,7 @@
             }
         }
 
-        // 核心交互逻辑
+        // 核心交互
         async function interact(action) {
             if (state.isProcessing) return; 
             
@@ -564,7 +562,7 @@
             });
         }
 
-        // 发送自由文字对话
+        // 发送文字对话
         async function submitChat() {
             if (state.isProcessing) return;
 
@@ -574,13 +572,13 @@
             const text = inputEl.value.trim();
             if (!text) return;
 
-            // 1. 使用极其安全的过滤逻辑，剔除任何可能导致 Headers 报错的字符
+            // 1. 安全洗涤：剔除一切异常隐藏字符
             const cleanKey = getStrictCleanKey();
             const isDefaultOrInvalid = !cleanKey || 
                                        cleanKey.length < 15 || 
                                        cleanKey.includes("API_KEY");
 
-            // 2. 扣除饱食度
+            // 2. 消耗饱食度
             state.hunger = Math.max(0, state.hunger - 5);
 
             // 3. 生气背对状态拦截
@@ -590,7 +588,7 @@
                 return;
             }
 
-            // 4. 如果密钥无效，走本地聊天逻辑，且不锁死界面
+            // 4. 若洗涤后的 Key 属于无效状态，走本地离线对话，不锁界面
             if (isDefaultOrInvalid) {
                 inputEl.value = "";
                 const reply = localFallbackChat(text);
@@ -598,7 +596,7 @@
                 return;
             }
 
-            // 5. 在线模式：锁定界面并请求 API
+            // 5. 在线通信：锁定界面，请求后端 API
             setInteractiveState(false); 
             inputEl.value = ""; 
             updateUI("咻……[咻咻猫正在思考你的话...]", "💭");
@@ -610,7 +608,7 @@
                 console.error("Chat Submit Error:", err);
                 updateUI("[咻咻的脑回路卡住了，自动切换为本地对话] \n" + localFallbackChat(text), "❌");
             } finally {
-                // 确保任何异常情况下，UI 都能在最后被恢复
+                // 确保任何情况下都会在最后恢复状态
                 setInteractiveState(true); 
             }
         }
