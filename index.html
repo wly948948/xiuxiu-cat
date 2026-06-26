@@ -338,9 +338,9 @@
 
     <script>
         // ==========================================
-        // ⚙️ 接口配置（若要免费，极力推荐换成 硅基流动：https://siliconflow.cn）
+        // ⚙️ 接口配置（若需免费，极力推荐换成 硅基流动：https://siliconflow.cn）
         // ==========================================
-          const CONFIG = {
+      const CONFIG = {
        apiKey: "sk-ephvdecvurhviermvzutqqegqessydmogyjjhlgzghzdxvwz", 
        apiUrl: "https://api.siliconflow.cn/v1", 
        apiModel: "Qwen/Qwen2.5-7B-Instruct" //     };
@@ -355,7 +355,7 @@
             chatHistory: [] // 🧠 短期对话滚动记忆（最大保存 5 轮）
         };
 
-        // 🌟 动态随机开机寄语库（每次刷新网页时随机加载）
+        // 🌟 动态随机开机寄语库
         const greetings = [
             "咻呜！小王你终于舍得开机了？[从粉色地板上慢吞吞地爬起来，伸了个懒腰] 本喵等得胡子都歪了！",
             "咻！[傲娇地抬起大圆头，抖了抖红粉色耳心] 别一直盯着本喵看。本喵今天心情好，才勉为其难在这里等你的，小王！",
@@ -364,14 +364,16 @@
             "十年了，小王你还是每天这个时间来守着我。[有些不好意思地用白色爪子刨了刨地板] 哼，本喵才没有在特意等你呢！"
         ];
 
-        // 页面初始化时随机选择一句打招呼
-        window.onload = function() {
+        // 👑 醒脑初始化（立即同步执行，彻底剔除 window.onload，解决慢加载下卡在“正在等待咻咻猫醒来”的问题）
+        function wakeupXiuXiu() {
             const textContent = document.getElementById('text-content');
             if (textContent) {
                 const randomIndex = Math.floor(Math.random() * greetings.length);
                 textContent.innerText = greetings[randomIndex];
             }
-        };
+        }
+        // 立刻执行一次唤醒
+        wakeupXiuXiu();
 
         // 获取格式化的本地日期和时间（动态注入提示词）
         function getCurrentDateTimeString() {
@@ -448,7 +450,7 @@
                         model: CONFIG.apiModel,
                         messages: messagesPayload,
                         max_tokens: 150,
-                        temperature: 0.6 // 降低温度以获得更理性的对话体验
+                        temperature: 0.6 // 稳定低温度
                     }),
                     signal: controller.signal
                 });
@@ -514,7 +516,7 @@
                 if (t.includes("鱼") || t.includes("吃") || t.includes("喂") || t.includes("肉")) {
                     return "小鱼干！[两眼放光，肚子发出巨大的咕噜声] 快点喂我，小王！本喵饿得脚都软了，再不喂咻咻可要原地咬人了！";
                 }
-                return "饥饿暴躁中！[红粉色的耳心气得直发抖] 小王！我肚子饿扁了（饱食度低于30）！现在没心情聊别的，快给我喂鱼干！";
+                return "饥饿暴躁中！[红粉色的耳心气得直发抖] 小王！我肚子饿扁了（饱食度低于30）！现没心情聊别的，快给我喂鱼干！";
             }
 
             // 3. 时间与天气感知
