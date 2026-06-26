@@ -434,19 +434,19 @@
 
     <script>
         // ==========================================
-        // ⚙️ 接口配置（若需免费，极力推荐换成 硅基流动：https://siliconflow.cn）
+        // ⚙️ 接口配置
         // ==========================================
-        const CONFIG = {
+      const CONFIG = {
        apiKey: "sk-ephvdecvurhviermvzutqqegqessydmogyjjhlgzghzdxvwz", 
        apiUrl: "https://api.siliconflow.cn/v1", 
-       apiModel: "Qwen/Qwen2.5-7B-Instruct" //     
+       apiModel: "Qwen/Qwen2.5-7B-Instruct" //    
            };
         // ==========================================
 
         // 🧠 记忆读取存档函数
         function loadSavedState() {
             try {
-                const saved = localStorage.getItem('xiuxiu_pet_state_v5');
+                const saved = localStorage.getItem('xiuxiu_pet_state_v6');
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     return {
@@ -487,7 +487,7 @@
                     chatHistory: state.chatHistory,
                     lastUserEmotion: state.lastUserEmotion
                 };
-                localStorage.setItem('xiuxiu_pet_state_v5', JSON.stringify(toSave));
+                localStorage.setItem('xiuxiu_pet_state_v6', JSON.stringify(toSave));
             } catch (e) {
                 console.error("存档写入失败:", e);
             }
@@ -656,7 +656,7 @@
             }
         }
 
-        // 动态构建提示词：引入消极情感感知分支
+        // 动态构建提示词
         function getSystemPrompt() {
             const timeStr = getCurrentDateTimeString();
             
@@ -722,8 +722,13 @@
             }
 
             // 🧠 离线消极情绪强制打碎冰点
-            if (t.match(/(累|烦|难过|哭|不开心|伤心|失败|委屈|倒霉|绝望|压力|无用)/)) {
+            if (t.match(/(累|烦|难过|哭|不开心|伤心|失败|委屈|倒霉|绝望|压力|无用|疼|伤|流血|割破)/)) {
                 return "小王今天无精打采的…… [有些担心地靠过来，用白色手套爪子轻轻按在你的脚背上，抬头看着你] 咻呜，是在外面遇到什么烦心事了吗？跟本喵说说，咻咻绝对帮你保守秘密，哼！";
+            }
+
+            // 🧠 在无视状态下（但不是消极情绪），说话不拦截，而是傲娇冷战回复
+            if (state.isIgnoring) {
+                return "哼！[依然固执地用巧克力色大屁股对着你，大尾巴轻轻拍打地面] 咻呜！别跟本喵套近乎，小王！咻咻正单方面和你冷战呢！除非你戳我道歉，或者喂我吃小鱼干！";
             }
 
             // 1. 低好感度（低于30）绝对拦截
@@ -808,9 +813,9 @@
         async function interact(action) {
             if (state.isProcessing) return; 
             
-            // 【双子系统：如果主人最近处于消极情绪，绝对不触发傲娇无视/不理人状态！】
+            // 【双子系统：如果主人最近处于消极情绪状态，绝对不触发傲娇无视/不理人状态！】
             if (state.lastUserEmotion === 'negative') {
-                // 放行所有互动，即使好感度低也可以摸摸
+                // 此时直接放行，不限制摸摸头或逗猫
             } else {
                 // 正常态度下的好感度冰点限制
                 if (state.affection < 30 && action !== 'feed' && action !== 'poke') {
@@ -903,7 +908,7 @@
 
         function tryToTriggerIgnore(chance) {
             return new Promise((resolve) => {
-                // 🧠 双子系统核心：如果主人最近处于消极情绪状态，绝对不触发傲娇无视！猫咪会全程陪伴安慰。
+                // 🧠 双子系统核心：如果主人最近处于消极情绪状态，或者当前输入有消极色彩，绝对不触发傲娇无视！
                 if (state.lastUserEmotion === 'negative') {
                     resolve();
                     return;
@@ -946,7 +951,7 @@
                                        cleanKey.includes("API_KEY");
 
             // 🧠 情绪分析：捕捉用户是否流露消极低落情绪（累/烦/哭/失败/委屈/绝望等）
-            const isNegative = /(累|烦|难过|哭|不开心|伤心|失败|委屈|倒霉|绝望|压力|无用|傻|笨)/i.test(text);
+            const isNegative = /(累|烦|难过|哭|不开心|伤心|失败|委屈|倒霉|绝望|压力|无用|傻|笨|疼|割破|流血|受伤)/i.test(text);
             state.lastUserEmotion = isNegative ? 'negative' : 'normal';
 
             // 2. 消耗饱食度
@@ -956,13 +961,12 @@
             if (state.isIgnoring) {
                 if (isNegative) {
                     state.isIgnoring = false;
+                    state.ignoreCount = 0;
                     const container = document.getElementById('sprite-container');
                     if (container) container.classList.remove('tsundere-ignore');
                     // 此处不 return，直接放行，让猫咪进行联网深度安抚！
                 } else {
-                    updateUI("…… [咻咻猫一动不动，尾巴冷淡地在猫窝外甩了一下，似乎完全不想理你]", "💤");
-                    inputEl.value = "";
-                    return;
+                    // 正常无视聊天不拦截：交由 localFallbackChat 或 AI 处理冷战对白
                 }
             }
 
@@ -1019,7 +1023,7 @@
             const affectionBar = document.getElementById('affection-bar');
             const textContent = document.getElementById('text-content');
 
-            // 动态变色
+            // 动态变色：当饱食度或好感度低于30时，血条会变红/灰，给用户强烈的视觉紧迫感
             if (hungerBar) {
                 hungerBar.style.width = state.hunger + '%';
                 if (state.hunger < 30) {
