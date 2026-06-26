@@ -319,6 +319,7 @@
         <div id="dialogue-box">
             <div>
                 <div id="speaker">咻咻猫</div>
+                <!-- 👑 HTML 物理防死锁兜底台词 -->
                 <div id="text-content">咻呜！小王你终于舍得开机了？[从粉色地板上慢吞吞地爬起来，伸了个懒腰] 本喵等得胡子都歪了！</div>
             </div>
         </div>
@@ -340,35 +341,83 @@
         // ==========================================
         // ⚙️ 接口配置（若需免费，极力推荐换成 硅基流动：https://siliconflow.cn）
         // ==========================================
-        const CONFIG = {
+       const CONFIG = {
        apiKey: "sk-ephvdecvurhviermvzutqqegqessydmogyjjhlgzghzdxvwz", 
        apiUrl: "https://api.siliconflow.cn/v1", 
-       apiModel: "Qwen/Qwen2.5-7B-Instruct" //     
+       apiModel: "Qwen/Qwen2.5-7B-Instruct" //    
            };
         // ==========================================
 
-        const state = {
-            hunger: 60,
-            affection: 60,
-            isIgnoring: false,  
-            ignoreCount: 0,
-            isProcessing: false,
-            chatHistory: [] // 🧠 短期对话滚动记忆（最大保存 5 轮）
-        };
+        // 🧠 记忆读取函数：开机时自动去浏览器数据库寻找上一次的存档
+        function loadSavedState() {
+            try {
+                const saved = localStorage.getItem('xiuxiu_pet_state_v2');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    return {
+                        hunger: parsed.hunger !== undefined ? parsed.hunger : 60,
+                        affection: parsed.affection !== undefined ? parsed.affection : 60,
+                        isIgnoring: parsed.isIgnoring !== undefined ? parsed.isIgnoring : false,
+                        ignoreCount: parsed.ignoreCount !== undefined ? parsed.ignoreCount : 0,
+                        isProcessing: false,
+                        chatHistory: parsed.chatHistory || []
+                    };
+                }
+            } catch (e) {
+                console.error("读取存档失败，启用全新状态:", e);
+            }
+            // 若没有存档，使用默认初始值
+            return {
+                hunger: 60,
+                affection: 60,
+                isIgnoring: false,  
+                ignoreCount: 0,
+                isProcessing: false,
+                chatHistory: [] 
+            };
+        }
+
+        // 🧠 初始化状态机
+        const state = loadSavedState();
+
+        // 🧠 记忆写入存档函数
+        function saveCurrentState() {
+            try {
+                const toSave = {
+                    hunger: state.hunger,
+                    affection: state.affection,
+                    isIgnoring: state.isIgnoring,
+                    ignoreCount: state.ignoreCount,
+                    chatHistory: state.chatHistory
+                };
+                localStorage.setItem('xiuxiu_pet_state_v2', JSON.stringify(toSave));
+            } catch (e) {
+                console.error("存档写入失败:", e);
+            }
+        }
 
         // 🌟 动态随机开机寄语库
         const greetings = [
-            "咻呜！小王你终于舍得开机了？[从粉色地板上慢吞吞地爬起来，伸了个懒腰] 本喵等得胡子都歪了！",
+            "咻呜！小王你终于舍得开机了？[从粉色地板上慢吞吞地爬起来，伸了个腰] 本喵等得胡子都歪了！",
             "咻！[傲娇地抬起大圆头，抖了抖红粉色耳心] 别一直盯着本喵看。本喵今天心情好，才勉为其难在这里等你的，小王！",
             "哼，你来啦？[缩成一个巧克力色的大毛球，耳朵轻快地转了转] 肚子好像有点咕噜噜了，小王，你懂我的意思吧？咻呜~",
             "咻！新衣服合身吗？[在浅粉色房间里摇了摇巧克力色的大尾巴] 这次和照片上一模一样了吧！咻呜~",
             "十年了，小王你还是每天这个时间来守着我。[有些不好意思地用白色爪子刨了刨地板] 哼，本喵才没有在特意等你呢！"
         ];
 
-        // 👑 醒脑初始化（立即同步执行一次，彻底排干缓存）
+        // 醒脑初始化（立即同步执行一次，彻底排干缓存）
         function wakeupXiuXiu() {
             const textContent = document.getElementById('text-content');
             if (textContent) {
+                // 如果有历史聊天记忆，开机时直接显示最后一句话，完美保持上下文记忆连贯！
+                if (state.chatHistory && state.chatHistory.length > 0) {
+                    const lastTurn = state.chatHistory[state.chatHistory.length - 1];
+                    if (lastTurn && lastTurn.role === "assistant") {
+                        textContent.innerText = `[接上回] ${lastTurn.content}`;
+                        return;
+                    }
+                }
+                // 若无历史记录，随机选择寄语
                 const randomIndex = Math.floor(Math.random() * greetings.length);
                 textContent.innerText = greetings[randomIndex];
             }
@@ -433,6 +482,7 @@
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 6000); 
 
+            // 构建带有历史记忆的 messages 负载
             const messagesPayload = [
                 { role: "system", content: getSystemPrompt() },
                 ...state.chatHistory 
@@ -449,7 +499,7 @@
                         model: CONFIG.apiModel,
                         messages: messagesPayload,
                         max_tokens: 150,
-                        temperature: 0.6 // 稳定中温，完美兼顾条理逻辑与傲娇风趣
+                        temperature: 0.6 // 稳定低温度
                     }),
                     signal: controller.signal
                 });
@@ -473,14 +523,13 @@
             }
         }
 
-        // 动态构建提示词：引入【好感度阶梯分级】与【高连贯上下文关联】
+        // 动态构建提示词
         function getSystemPrompt() {
             const timeStr = getCurrentDateTimeString();
             
             let stateDescription = "";
-            // 好感度三级分级（低于30：冰点冷酷；30-50：别扭傲娇；50以上：超级粘人）
             if (state.affection < 30) {
-                stateDescription += `\n- 【当前情感：情感冰点（好感度：${state.affection}/100 < 30）】。你对小王极度冷漠、抗拒，坚决拒绝亲密，说话极为敷衍、冰冷。`;
+                stateDescription += `\n- 【当前情感：情感冰点（好感度：${state.affection}/100 < 30）】。你对小王极度冷漠、抗拒，坚决拒绝亲密，说话极其敷衍、冷冰冰，拒绝与他交流。`;
             } else if (state.affection >= 30 && state.affection < 50) {
                 stateDescription += `\n- 【当前情感：傲娇防线（好感度：${state.affection}/100 在 30~50 之间）】。你性格极其傲娇（口嫌体正直），虽然依赖小王但嘴硬死不承认，说话别扭，经常数落他。`;
             } else {
@@ -508,11 +557,11 @@
         ${stateDescription}`;
         }
 
-        // 本地降级语料（单机无缝适配饿肚子、情感分级、以及高精度物理数学运算）
+        // 本地降级语料
         function localFallbackChat(text) {
             const t = text.toLowerCase();
             
-            // 💡 离线高精度物理数学解析器：秒级识别并解答常见数字与符号算式（1+1、5*5 等）
+            // 💡 离线高精度物理数学解析器
             const mathRegex = /(\d+)\s*([\+\-\*\/])\s*(\d+)/;
             const match = text.match(mathRegex);
             if (match) {
@@ -664,7 +713,7 @@
                             emoji = "💢";
                         }
                     } else {
-                        // 🧠 戳一戳：强行清零对话记忆，帮它从被污染的状态中“醒脑”
+                        // 🧠 戳一戳：作为隐藏机制，强行清零对话记忆，帮它从被污染的状态中“醒脑”
                         state.chatHistory = []; 
                         reply = "哎呀！[揉了揉眼睛，摇了摇圆头，瞬间忘掉了刚刚聊过的一切] 别乱戳！咻咻都被你戳得记不清事了，小王！";
                         emoji = "❔";
@@ -734,7 +783,7 @@
             // 🧠 将用户当前的本轮输入压入历史记忆队列
             state.chatHistory.push({ role: "user", content: text });
             if (state.chatHistory.length > 10) {
-                state.chatHistory.shift(); // 限制队列最大长度为 10 条（5轮对话）
+                state.chatHistory.shift(); 
             }
 
             // 4. 离线模式判定：直接利用本地词库，并将离线回复也同步压入记忆以便后期联网参考
@@ -798,6 +847,9 @@
             }
 
             if (textContent) textContent.innerText = replyText;
+
+            // 🧠 每次状态发生改变时，自动将状态写入本地 LocalStorage 存档
+            saveCurrentState();
 
             if (emoji) {
                 const screen = document.getElementById('game-screen');
