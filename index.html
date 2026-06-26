@@ -128,7 +128,7 @@
             50% { transform: scale(1.03, 0.97) translateY(2px); }
         }
 
-        /* 2. 犯困状态：5秒超慢深呼吸 */
+        /* 2. 犯困状态：5秒超慢呼吸 */
         #sprite-container.state-sleepy svg.cat-sprite {
             animation: breathe-sleepy 5s infinite ease-in-out;
             shape-rendering: crispEdges;
@@ -138,7 +138,7 @@
             50% { transform: scale(1.01, 0.99) translateY(1px); }
         }
 
-        /* 3. 生气暴躁状态：1.5秒急促呼吸 + 颤抖摇晃 */
+        /* 3. 生气暴躁状态：1.5秒急促呼吸 + 震颤摇晃 */
         #sprite-container.state-angry svg.cat-sprite {
             animation: breathe-angry 1.5s infinite ease-in-out, shake-angry 0.15s infinite alternate;
             shape-rendering: crispEdges;
@@ -152,7 +152,7 @@
             100% { transform: translate(1px, 0) rotate(0.5deg); }
         }
 
-        /* 4. 撒娇/粘人/开心状态：2秒雀跃起伏 + Q弹上下弹跳 */
+        /* 4. 开心状态：2秒雀跃起伏 + 上下弹跳 */
         #sprite-container.state-happy svg.cat-sprite {
             animation: breathe-happy 2s infinite ease-in-out, bounce-happy 1s infinite alternate;
             shape-rendering: crispEdges;
@@ -163,36 +163,86 @@
         }
         @keyframes bounce-happy {
             0% { transform: translateY(0); }
-            100% { transform: translateY(-4px); } /* 向上Q弹跳动 */
+            100% { transform: translateY(-4px); } 
         }
 
-        /* 控制 SVG 内部元素显示隐藏 */
+        /* 👑 安全隔离：强制重置所有特殊表情图层，规避浏览器渲染引擎的 display 转换冲突 */
         .eye-sleepy, .eye-angry, .eyebrow-angry, .eye-happy, 
         .ear-sleepy, .ear-angry, .blush-happy {
-            display: none;
+            display: none !important;
         }
 
-        /* 犯困状态显示 */
+        /* 犯困状态强制显示 */
         #sprite-container.state-sleepy .eye-sleepy,
-        #sprite-container.state-sleepy .ear-sleepy { display: block; }
+        #sprite-container.state-sleepy .ear-sleepy { display: inline !important; }
         #sprite-container.state-sleepy .eye-open,
         #sprite-container.state-sleepy .eye-open-pupil,
-        #sprite-container.state-sleepy .ear-normal { display: none; }
+        #sprite-container.state-sleepy .ear-normal { display: none !important; }
 
-        /* 生气状态显示 */
+        /* 生气状态强制显示 */
         #sprite-container.state-angry .eye-angry,
         #sprite-container.state-angry .eyebrow-angry,
-        #sprite-container.state-angry .ear-angry { display: block; }
+        #sprite-container.state-angry .ear-angry { display: inline !important; }
         #sprite-container.state-angry .eye-open,
         #sprite-container.state-angry .eye-open-pupil,
-        #sprite-container.state-angry .ear-normal { display: none; }
+        #sprite-container.state-angry .ear-normal { display: none !important; }
 
-        /* 撒娇开心状态显示 */
+        /* 开心撒娇状态强制显示 */
         #sprite-container.state-happy .eye-happy,
-        #sprite-container.state-happy .blush-happy { display: block; }
+        #sprite-container.state-happy .blush-happy { display: inline !important; }
         #sprite-container.state-happy .eye-open,
-        #sprite-container.state-happy .eye-open-pupil { display: none; }
+        #sprite-container.state-happy .eye-open-pupil { display: none !important; }
 
+
+        /* 👑 优化后的对话框布局（去除无用 div 隔离，直接接管 Flex 溢出剪裁） */
+        #dialogue-box {
+            background: #1a1512;
+            border: 4px solid #fff;
+            outline: 2px solid #1a1512;
+            border-radius: 4px;
+            height: 110px;
+            padding: 8px 12px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        #speaker {
+            font-size: 11px;
+            color: #ff99bb; 
+            font-weight: bold;
+            letter-spacing: 1px;
+            flex-shrink: 0; /* 名字固定高度，决不被压缩 */
+        }
+
+        /* 👑 自适应像素滚动对话栏 */
+        #text-content {
+            font-size: 13px;
+            line-height: 1.4;
+            color: #ffd1dc; 
+            overflow-y: auto; /* 文本过长时自动触发垂直滚动 */
+            flex-grow: 1;
+        }
+
+        /* 🎨 16-bit 专属复古风滚动条美化 */
+        #text-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        #text-content::-webkit-scrollbar-track {
+            background: #1a1512;
+        }
+        #text-content::-webkit-scrollbar-thumb {
+            background: #ab825f;
+            border: 1px solid #4e3522;
+            border-radius: 2px;
+        }
+
+        #buttons-panel {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
 
         .pixel-btn {
             background: #e29bb2; 
@@ -276,7 +326,7 @@
                 </div>
             </div>
 
-            <!-- SVG 猫咪 (支持4种情感动画切换) -->
+            <!-- SVG 猫咪 -->
             <div id="sprite-container" class="state-normal">
                 <svg class="cat-sprite" viewBox="0 0 48 48">
                     <!-- 1. 尾巴 -->
@@ -323,7 +373,7 @@
                     <path d="M11 27 H29 V29 H11 Z" fill="#f2cab3" /> 
                     <path d="M13 29 H27 V37 H13 Z" fill="#ffffff" /> 
 
-                    <!-- 6. 眼睛与五官图层 (多表情无缝叠合) -->
+                    <!-- 6. 眼睛与五官图层 -->
                     <!-- 正常大圆眼 -->
                     <rect class="eye-open" x="14" y="18" width="4" height="4" fill="#150b09" />
                     <rect class="eye-open-pupil" x="15" y="19" width="2" height="2" fill="#ffffff" /> 
@@ -364,11 +414,9 @@
         </div>
 
         <div id="dialogue-box">
-            <div>
-                <div id="speaker">咻咻猫</div>
-                <!-- 👑 HTML 物理防死锁兜底台词 -->
-                <div id="text-content">咻呜！小王你终于舍得开机了？[从粉色地板上慢吞吞地爬起来，伸了个懒腰] 本喵等得胡子都歪了！</div>
-            </div>
+            <div id="speaker">咻咻猫</div>
+            <!-- 👑 物理无死锁初始化默认台词 -->
+            <div id="text-content">咻呜！小王你终于舍得开机了？[从粉色地板上慢吞吞地爬起来，伸了个懒腰] 本喵等得胡子都歪了！</div>
         </div>
 
         <div id="buttons-panel">
@@ -388,16 +436,17 @@
         // ==========================================
         // ⚙️ 接口配置（若需免费，极力推荐换成 硅基流动：https://siliconflow.cn）
         // ==========================================
-       const CONFIG = {
+        const CONFIG = {
        apiKey: "sk-ephvdecvurhviermvzutqqegqessydmogyjjhlgzghzdxvwz", 
        apiUrl: "https://api.siliconflow.cn/v1", 
        apiModel: "Qwen/Qwen2.5-7B-Instruct" //     };
+        };
         // ==========================================
 
-        // 🧠 记忆读取函数
+        // 🧠 记忆读取存档函数
         function loadSavedState() {
             try {
-                const saved = localStorage.getItem('xiuxiu_pet_state_v3');
+                const saved = localStorage.getItem('xiuxiu_pet_state_v4');
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     return {
@@ -425,7 +474,7 @@
         // 初始化状态
         const state = loadSavedState();
 
-        // 🧠 写入本地存档
+        // 🧠 写入存档
         function saveCurrentState() {
             try {
                 const toSave = {
@@ -435,7 +484,7 @@
                     ignoreCount: state.ignoreCount,
                     chatHistory: state.chatHistory
                 };
-                localStorage.setItem('xiuxiu_pet_state_v3', JSON.stringify(toSave));
+                localStorage.setItem('xiuxiu_pet_state_v4', JSON.stringify(toSave));
             } catch (e) {
                 console.error("存档写入失败:", e);
             }
@@ -450,7 +499,7 @@
             "十年了，小王你还是每天这个时间来守着我。[有些不好意思地用白色爪子刨了刨地板] 哼，本喵才没有在特意等你呢！"
         ];
 
-        // 立即唤醒咻咻
+        // 唤醒咻咻
         function wakeupXiuXiu() {
             const textContent = document.getElementById('text-content');
             if (textContent) {
@@ -469,7 +518,7 @@
         }
         wakeupXiuXiu();
 
-        // 情绪动画控制引擎：根据饱食度、好感度、时间状态，自动切换 16-bit 像素状态
+        // 情绪动画控制引擎
         function setVisualState(stateName) {
             const container = document.getElementById('sprite-container');
             if (!container) return;
@@ -477,25 +526,21 @@
             container.classList.add(`state-${stateName}`);
         }
 
-        // 智能状态机评估：自动检测身体情况决定外在情绪
+        // 智能状态机：自动检测身体情况决定外在情绪
         function updateVisualState() {
-            // 优先度 1：极度饥饿（小于30）或正在生气无视 -> 生气飞机耳
             if (state.hunger < 30 || state.isIgnoring) {
                 setVisualState('angry');
                 return;
             }
-            // 优先度 2：深夜（23点-凌晨5点）-> 犯困眯眼
             const hours = new Date().getHours();
             if (hours >= 23 || hours < 5) {
                 setVisualState('sleepy');
                 return;
             }
-            // 优先度 3：高好感度（大于50）-> 雀跃粘人弯弯眼
             if (state.affection >= 50) {
                 setVisualState('happy');
                 return;
             }
-            // 优先度 4：平稳常态
             setVisualState('normal');
         }
 
@@ -642,7 +687,7 @@
         ${stateDescription}`;
         }
 
-        // 本地降级语料 (无缝融入物理算术逻辑)
+        // 本地降级语料
         function localFallbackChat(text) {
             const t = text.toLowerCase();
             
@@ -750,7 +795,7 @@
             
             // 【核心限制：好好感度低于30，拒绝亲密互动，直到喂鱼干恢复】
             if (state.affection < 30 && action !== 'feed' && action !== 'poke') {
-                const reply = "哼！[咻咻猫冷冷地转过身，用背部对着你] 好好感度低于30（当前：" + state.affection + "），咻咻正处于【情感冰点】！现在的我不接受任何摸摸或玩耍，除非你先喂我小鱼干，或者戳我道歉！";
+                const reply = "哼！[咻咻猫冷冷地转过身，用背部对着你] 好感度低于30（当前：" + state.affection + "），咻咻正处于【情感冰点】！现在的我不接受任何摸摸或玩耍，除非你先喂我小鱼干，或者戳我道歉！";
                 updateUI(reply, "💔");
                 return;
             }
@@ -955,7 +1000,14 @@
                 }
             }
 
-            if (textContent) textContent.innerText = replyText;
+            if (textContent) {
+                textContent.innerText = replyText;
+                
+                // 👑 自动向上滚动核心：每次渲染新对白，容器都自动滑到底部，前面的字整齐上滚
+                setTimeout(() => {
+                    textContent.scrollTop = textContent.scrollHeight;
+                }, 50);
+            }
 
             // 🧠 每次状态发生改变时，自动将状态写入本地 LocalStorage 存档
             saveCurrentState();
