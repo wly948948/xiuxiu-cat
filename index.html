@@ -532,5 +532,230 @@
             }
         }
     </script>
+    <script>
+    // ==========================================
+    // ⚙️ 在这里直接内置你的大模型配置
+    // ==========================================
+    const CONFIG = {
+        apiKey: "在这里填入你的_DEEPSEEK_API_KEY", // 👈 替换这行双引号里的密钥
+        apiUrl: "https://api.deepseek.com/v1", 
+        apiModel: "deepseek-chat" 
+    };
+    // ==========================================
+
+    const state = {
+        hunger: 60,
+        affection: 60,
+        isIgnoring: false,  
+        ignoreCount: 0      
+    };
+
+    window.onload = function() {
+        const settingsBtn = document.getElementById('settings-btn');
+        if (settingsBtn) settingsBtn.style.display = 'none'; 
+    };
+
+    // 调用大模型对话接口
+    async function fetchAIResponse(userMessage) {
+        const cleanKey = CONFIG.apiKey.replace(/[^\x00-\x7F]/g, "").trim();
+
+        // 核心优化 1：如果检测到没有有效 Key，瞬间秒回本地对话，不进入任何等待
+        if (!cleanKey || cleanKey.includes("在这里填入") || cleanKey.length < 10) {
+            return localFallbackChat(userMessage);
+        }
+
+        // 核心优化 2：设置 6 秒看门狗超时，防止接口卡死
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000); // 6秒超时
+
+        try {
+            const response = await fetch(`${CONFIG.apiUrl}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${cleanKey}`
+                },
+                body: JSON.stringify({
+                    model: CONFIG.apiModel,
+                    messages: [
+                        { role: "system", content: getSystemPrompt() },
+                        { role: "user", content: userMessage }
+                    ],
+                    max_tokens: 150,
+                    temperature: 0.8
+                }),
+                signal: controller.signal // 绑定超时信号
+            });
+
+            clearTimeout(timeoutId); // 成功响应，清除定时器
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`[HTTP ${response.status}] - ${errText || '未知错误'}`);
+            }
+            const data = await response.json();
+            return data.choices[0].message.content;
+        } catch (err) {
+            clearTimeout(timeoutId);
+            console.error(err);
+            
+            // 如果超时了，自动无缝降级到本地对话，并附带一句吐槽
+            if (err.name === 'AbortError') {
+                return "[咻咻等得不耐烦，自己掐断了信号] 哼，你的网速慢得像蜗牛爬，咻咻不想等了！\n" + localFallbackChat(userMessage);
+            }
+            
+            // 其它网络错误（如CORS拦截），也无缝切换到本地，保证永远有反馈
+            return `[脑电波连接失败，咻咻自动切换回本地模式] \n${localFallbackChat(userMessage)}`;
+        }
+    }
+
+    // 封装系统提示词
+    function getSystemPrompt() {
+        return `
+            你是一只名叫“咻咻猫”的16位复古游戏像素风电子宠物猫。
+            外观：你是一只胖乎乎的、有着精致网格的深巧克力色猫咪。你的面部、胸前和前爪都是纯白色的（穿着白手套），胸部边缘有一圈漂亮的奶油橘色荷叶边过渡。你有一只很萌的粉红色耳心、头上有一颗白色高光像素、大腿上有一颗粉色红晕。你正端坐在精美温馨的浅粉色猫窝房间里。
+            性格：极度傲娇、口嫌体正直、对主人依赖但嘴上坚决不承认。说话喜欢带“咻”、“咻呜”的尾音，动作描述放在方括号[]里。
+            
+            当下的实时游戏属性状态：
+            - 饱食度: ${state.hunger}/100
+            - 好感度: ${state.affection}/100
+            - 是否在生气背对主人: ${state.isIgnoring ? '是' : '否'}
+
+            限制规则：
+            1. 严格使用猫咪视角和设定的傲娇语气回复。
+            2. 每次回答字数限制在 60 字以内，简短精炼。
+        `;
+    }
+
+    // 本地降级简易对话库（在没有 Key 或网络延迟时使用）
+    function localFallbackChat(text) {
+        if (text.includes("你好") || text.includes("嗨") || text.includes("喂")) {
+            return "咻！你好。盯着咻咻的大方眼干嘛？没看过这么标准又聪明的像素猫咪吗？";
+        } else if (text.includes("可爱") || text.includes("漂亮") || text.includes("胖")) {
+            return "咻呜~ [扭过头去晃了晃深褐色的大尾巴] 哼，就算你夸我可爱，我手里的鱼干也不会分你一口！";
+        } else if (text.includes("查天气") || text.includes("天气")) {
+            return "哼，连天气都要咻咻帮你查。外面反正不是下雨就是大晴天，别感冒了就行，咻！";
+        } else {
+            // 增加本地通用语料，丰富反馈
+            const replies = [
+                "咻？你在说什么胡话？[歪着圆脸有些疑惑地打量你]",
+                "哼，不想听你唠叨。快拿逗猫棒陪我玩，不然不理你了！",
+                "…… [在粉色猫窝里换了个更舒服的姿势，尾巴尖动了动]",
+                "咻呜！别说话了，咻咻的肚子好像有点咕噜噜叫了喵~"
+            ];
+            return replies[Math.floor(Math.random() * replies.length)];
+        }
+    }
+
+    // 核心交互逻辑
+    async function interact(action) {
+        let reply = "";
+        let emoji = "";
+
+        if (state.isIgnoring && action !== 'poke') {
+            reply = "…… [咻咻猫固执地背对着你，把深褐色大尾巴甩得邦邦响，似乎在等你跟它道歉] 哼。";
+            updateUI(reply, "💢");
+            return;
+        }
+
+        if (action === 'feed') {
+            state.hunger = Math.min(100, state.hunger + 20);
+            state.affection = Math.min(100, state.affection + 5);
+            reply = "咻！鱼干真香！[吧唧吧唧地吃完，用小舌头舔了舔雪白的口罩区域] 算你识相！";
+            emoji = "🍖";
+            tryToTriggerIgnore(0.2); 
+        } else if (action === 'pet') {
+            state.affection = Math.min(100, state.affection + 12);
+            reply = "呼噜呼噜……[虽然很舒服但转过了大圆头] 哼，只是看在你这么诚恳的份上才让你摸一摸的！";
+            emoji = "❤️";
+            tryToTriggerIgnore(0.3); 
+        } else if (action === 'play') {
+            state.hunger = Math.max(0, state.hunger - 10);
+            state.affection = Math.min(100, state.affection + 10);
+            reply = "咻！看爪！[在粉色地板上飞快扑腾，脸颊两侧的毛毛也跟着抖动] 本喵才不是想玩，只是觉得这羽毛很碍眼！";
+            emoji = "✨";
+        } else if (action === 'poke') {
+            if (state.isIgnoring) {
+                state.ignoreCount--;
+                if (state.ignoreCount <= 0) {
+                    state.isIgnoring = false;
+                    state.affection = Math.min(100, state.affection + 15);
+                    reply = "好啦好啦！真拿你没办法！[有些别扭地转回脸来，尾巴再次高高竖起] 讨厌，尾巴都被你戳歪了，咻呜！";
+                    emoji = "✨";
+                    document.getElementById('sprite-container').classList.remove('tsundere-ignore');
+                } else {
+                    reply = `不要乱戳！[咻咻猫耸了耸毛，不肯转过来，看样子还要戳 ${state.ignoreCount} 次]`;
+                    emoji = "💢";
+                }
+            } else {
+                reply = "哎呀！[抖了抖红粉色的耳心瞪你] 别戳我！再戳咻咻可要生气不理你了！";
+                emoji = "❔";
+                tryToTriggerIgnore(0.4); 
+            }
+        }
+
+        updateUI(reply, emoji);
+    }
+
+    function tryToTriggerIgnore(chance) {
+        if (state.isIgnoring) return;
+        if (Math.random() < chance) {
+            state.isIgnoring = true;
+            state.ignoreCount = Math.floor(Math.random() * 2) + 2; 
+            document.getElementById('sprite-container').classList.add('tsundere-ignore');
+            setTimeout(() => {
+                updateUI("哼！[咻咻猫傲娇地转过身去，背对你端坐在粉色地板上] 咻咻决定不理你了，除非你戳它道歉！", "💢");
+            }, 500);
+        }
+    }
+
+    // 发送自由文字对话
+    async function submitChat() {
+        const inputEl = document.getElementById('chat-input');
+        const text = inputEl.value.trim();
+        if (!text) return;
+
+        inputEl.value = ""; 
+        state.hunger = Math.max(0, state.hunger - 5);
+
+        if (state.isIgnoring) {
+            updateUI("…… [咻咻猫一动不动，尾巴冷淡地在猫窝外甩了一下，似乎完全不想理你]", "💤");
+            return;
+        }
+
+        const cleanKey = CONFIG.apiKey.replace(/[^\x00-\x7F]/g, "").trim();
+        
+        // 核心优化：如果没有配置 Key，直接进入本地无缝对话，绝不显示“思考中...”
+        if (!cleanKey || cleanKey.includes("在这里填入") || cleanKey.length < 10) {
+            const reply = localFallbackChat(text);
+            updateUI(reply, "💬");
+            return;
+        }
+
+        // 如果配了 Key，先提示思考，并展示气泡
+        updateUI("咻……[咻咻猫正在思考你的话...]", "💭");
+
+        const reply = await fetchAIResponse(text);
+        
+        updateUI(reply, "💬");
+    }
+
+    function updateUI(replyText, emoji) {
+        document.getElementById('hunger-bar').style.width = state.hunger + '%';
+        document.getElementById('affection-bar').style.width = state.affection + '%';
+        document.getElementById('text-content').innerText = replyText;
+
+        if (emoji) {
+            const screen = document.getElementById('game-screen');
+            const effect = document.createElement('div');
+            effect.className = 'emoji-effect';
+            effect.innerText = emoji;
+            effect.style.left = state.isIgnoring ? '40%' : '60%';
+            effect.style.top = '50%';
+            screen.appendChild(effect);
+            setTimeout(() => effect.remove(), 1000);
+        }
+    }
+</script>
 </body>
 </html>
