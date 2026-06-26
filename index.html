@@ -319,7 +319,7 @@
         <div id="dialogue-box">
             <div>
                 <div id="speaker">咻咻猫</div>
-                <!-- 👑 HTML 物理防死锁兜底：直接写上一句精美的初始寄语，即使脚本因缓存未执行，咻咻猫也是清醒且有台词的！ -->
+                <!-- 👑 HTML 物理防死锁：直接默认显示一句台词，即使 JS 不运行也绝对不会显示“等待醒来” -->
                 <div id="text-content">咻呜！小王你终于舍得开机了？[从粉色地板上慢吞吞地爬起来，伸了个懒腰] 本喵等得胡子都歪了！</div>
             </div>
         </div>
@@ -342,17 +342,20 @@
         // ⚙️ 接口配置（若需免费，极力推荐换成 硅基流动：https://siliconflow.cn）
         // ==========================================
         const CONFIG = {
-            apiKey: "sk-7ab387a1cb474f6db6976ea3a8aef8f5", // 👈 填入您的 API Key（如无余额将自动无缝开启超能单机版）
-            apiUrl: "https://api.deepseek.com/v1", 
-            apiModel: "deepseek-chat" 
-        };
-        // ==========================================
-
-         const CONFIG = {
        apiKey: "sk-ephvdecvurhviermvzutqqegqessydmogyjjhlgzghzdxvwz", 
        apiUrl: "https://api.siliconflow.cn/v1", 
        apiModel: "Qwen/Qwen2.5-7B-Instruct" //    
            };
+        // ==========================================
+
+        const state = {
+            hunger: 60,
+            affection: 60,
+            isIgnoring: false,  
+            ignoreCount: 0,
+            isProcessing: false,
+            chatHistory: [] // 🧠 短期对话滚动记忆（最大保存 5 轮）
+        };
 
         // 🌟 动态随机开机寄语库
         const greetings = [
@@ -487,7 +490,7 @@
                 stateDescription += `\n你当前心情不错（好感度：${state.affection}/100）。你性格极其傲娇（口嫌体正直），虽然依赖小王但嘴硬死不承认。`;
             }
 
-            return `你是一只名叫“咻咻猫”的16位像素风电子宠物猫，今年10岁了，是主人“小王”养了十年的巧克力色小猫。
+            return `你是一只名叫“咻咻猫”的16位像素风电子宠物猫，今年10岁了，是主人“小王”养了十年的巧克力色老猫。
         
         【设定规则】
         1. 语气：极度傲娇、任性、嘴硬，但内心其实很黏小王。说话喜欢带“咻”或“咻呜”的尾音。
