@@ -341,7 +341,7 @@
         </div>
 
         <div id="chat-input-area">
-            <input type="text" id="chat-input" placeholder="和咻咻猫说点什么..." onkeydown="if(event.key === 'Enter') submitChat()">
+            <input type="text" id="chat-input" placeholder="和咻咻猫说点什么..." onkeydown="if(event.key === 'Enter' || event.keyCode === 13) submitChat()">
             <button id="chat-submit" onclick="submitChat()">发送</button>
         </div>
     </div>
@@ -362,26 +362,31 @@
             affection: 60,
             isIgnoring: false,  
             ignoreCount: 0,
-            isProcessing: false // 🔒 全局交互锁，防止多次点击导致不响应
+            isProcessing: false // 全局状态锁
         };
 
-        // 统一控制所有组件的可用状态
+        // 彻底、极端安全的过滤函数：
+        // 仅允许：大写字母、小写字母、数字、连字符(-)、下划线(_)
+        // 这样可以 100% 确保过滤掉任何空白、中文标点、全角符号及不可见字符
+        function getStrictCleanKey() {
+            if (!CONFIG || typeof CONFIG.apiKey !== 'string') return "";
+            return CONFIG.apiKey.replace(/[^A-Za-z0-9\-_]/g, "").trim();
+        }
+
+        // 统一控制所有组件的状态
         function setInteractiveState(enabled) {
             state.isProcessing = !enabled;
             
-            // 按钮列表
             const buttons = ['btn-feed', 'btn-pet', 'btn-play', 'btn-poke', 'chat-submit'];
             buttons.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.disabled = !enabled;
             });
 
-            // 输入框
             const inputEl = document.getElementById('chat-input');
             if (inputEl) {
                 inputEl.disabled = !enabled;
                 if (enabled) {
-                    // 解锁后自动聚焦，方便用户继续输入
                     setTimeout(() => inputEl.focus(), 50);
                 }
             }
@@ -389,21 +394,22 @@
 
         // 调用大模型对话接口
         async function fetchAIResponse(userMessage) {
-            const cleanKey = CONFIG.apiKey.replace(/[^\x00-\x7F]/g, "").trim();
+            const cleanKey = getStrictCleanKey();
 
-            if (!cleanKey || cleanKey.includes("在这里填入") || cleanKey.length < 10) {
+            // 如果 Key 长度不足，或者依然是默认模板名称，直接降级
+            if (!cleanKey || cleanKey.length < 15 || cleanKey.includes("sk-7ab387a1cb474f6db6976ea3a8aef8f5")) {
                 return localFallbackChat(userMessage);
             }
 
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 6000); // 6秒无响应自动断开
+            const timeoutId = setTimeout(() => controller.abort(), 6000); // 6秒超时
 
             try {
                 const response = await fetch(`${CONFIG.apiUrl}/chat/completions`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${cleanKey}`
+                        'Authorization': `Bearer ${cleanKey}` // cleanKey 此时 100% 为 ASCII 字符
                     },
                     body: JSON.stringify({
                         model: CONFIG.apiModel,
@@ -427,12 +433,12 @@
                 return data.choices[0].message.content;
             } catch (err) {
                 clearTimeout(timeoutId);
-                console.error("API Error:", err);
+                console.error("API 报错:", err);
                 
                 if (err.name === 'AbortError') {
-                    return "[连接超时，咻咻自动切换回本地模式] 哼，半天没反应，咻咻不等了！\n" + localFallbackChat(userMessage);
+                    return "[连接超时，咻咻自动切换回本地模式] 哼，半天没反应，咻咻不想等了！\n" + localFallbackChat(userMessage);
                 }
-                return `[脑电波连接不顺畅...] \n${localFallbackChat(userMessage)}`;
+                return `[脑电波连接不顺畅，暂时无法联网...] \n${localFallbackChat(userMessage)}`;
             }
         }
 
@@ -453,6 +459,7 @@
             `;
         }
 
+        // 本地降级语料库
         function localFallbackChat(text) {
             if (text.includes("你好") || text.includes("嗨") || text.includes("喂")) {
                 return "咻！你好。盯着咻咻的大方眼干嘛？没看过这么标准又聪明的像素猫咪吗？";
@@ -473,9 +480,9 @@
 
         // 核心交互逻辑
         async function interact(action) {
-            if (state.isProcessing) return; // 如果正在处理，直接拦截，不予响应
+            if (state.isProcessing) return; 
             
-            setInteractiveState(false); // 锁死 UI
+            setInteractiveState(false); 
 
             try {
                 let reply = "";
@@ -528,7 +535,6 @@
             } catch (err) {
                 console.error("Interaction Error:", err);
             } finally {
-                // 确保动画延时后重新释放锁定，避免按钮永远不可点
                 setTimeout(() => {
                     setInteractiveState(true);
                 }, 300);
@@ -558,7 +564,7 @@
             });
         }
 
-        // 发送自由对话
+        // 发送自由文字对话
         async function submitChat() {
             if (state.isProcessing) return;
 
@@ -568,28 +574,33 @@
             const text = inputEl.value.trim();
             if (!text) return;
 
-            setInteractiveState(false); // 禁用全部操作，防止等待API时用户乱点
-            inputEl.value = ""; 
-            
+            // 1. 使用极其安全的过滤逻辑，剔除任何可能导致 Headers 报错的字符
+            const cleanKey = getStrictCleanKey();
+            const isDefaultOrInvalid = !cleanKey || 
+                                       cleanKey.length < 15 || 
+                                       cleanKey.includes("API_KEY");
+
+            // 2. 扣除饱食度
             state.hunger = Math.max(0, state.hunger - 5);
 
+            // 3. 生气背对状态拦截
             if (state.isIgnoring) {
                 updateUI("…… [咻咻猫一动不动，尾巴冷淡地在猫窝外甩了一下，似乎完全不想理你]", "💤");
-                setInteractiveState(true);
+                inputEl.value = "";
                 return;
             }
 
-            const cleanKey = CONFIG.apiKey.replace(/[^\x00-\x7F]/g, "").trim();
-            
-            // 无密钥则直接秒回本地内容，不走延迟等待
-            if (!cleanKey || cleanKey.includes("在这里填入") || cleanKey.length < 10) {
+            // 4. 如果密钥无效，走本地聊天逻辑，且不锁死界面
+            if (isDefaultOrInvalid) {
+                inputEl.value = "";
                 const reply = localFallbackChat(text);
                 updateUI(reply, "💬");
-                setInteractiveState(true);
                 return;
             }
 
-            // 有密钥时，展示思考中
+            // 5. 在线模式：锁定界面并请求 API
+            setInteractiveState(false); 
+            inputEl.value = ""; 
             updateUI("咻……[咻咻猫正在思考你的话...]", "💭");
 
             try {
@@ -597,9 +608,10 @@
                 updateUI(reply, "💬");
             } catch (err) {
                 console.error("Chat Submit Error:", err);
-                updateUI("[咻咻的脑回路卡住了...]", "❌");
+                updateUI("[咻咻的脑回路卡住了，自动切换为本地对话] \n" + localFallbackChat(text), "❌");
             } finally {
-                setInteractiveState(true); // 无论成功与否，最后一定解锁界面
+                // 确保任何异常情况下，UI 都能在最后被恢复
+                setInteractiveState(true); 
             }
         }
 
