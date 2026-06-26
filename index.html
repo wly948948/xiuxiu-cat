@@ -76,23 +76,28 @@
             text-shadow: 1px 1px 0px #4e3522, -1px -1px 0px #4e3522, 1px -1px 0px #4e3522, -1px 1px 0px #4e3522;
         }
 
-        .bar-label { width: 45px; }
+        /* 👑 优化后的标签排版样式：图标最前，文字一排，居中对齐，不换行 */
+        .bar-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;                /* 图标与文字之间的微调间距 */
+            white-space: nowrap;     /* 强制文字排在同一排，永不换行 */
+            min-width: 65px;         /* 统一对齐宽度 */
+            margin-right: 5px;       /* 与血条之间的留白间距 */
+        }
         
         .pixel-bar-bg {
             width: 90px;
             height: 14px;
             background: #e9ced5;
             border: 3px solid #4e3522;
-            margin-left: 5px;
         }
 
         .pixel-bar-fill {
             height: 100%;
-            background: #ff5e7e; 
             width: 60%;
-            transition: width 0.3s;
+            transition: width 0.3s, background-color 0.5s;
         }
-        #affection-bar { background: #ff2a85; }
 
         /* 精灵图容器 */
         #sprite-container {
@@ -222,13 +227,6 @@
             outline: none;
         }
 
-        #chat-input:disabled {
-            background: #2b231f;
-            color: #887870;
-            border-color: #3a2e26;
-            cursor: not-allowed;
-        }
-
         #chat-submit {
             background: #e8517b;
             color: white;
@@ -237,13 +235,6 @@
             cursor: pointer;
             font-weight: bold;
             border-radius: 4px;
-        }
-
-        #chat-submit:disabled {
-            background: #904056;
-            border-color: #602a3a;
-            color: #b09098;
-            cursor: not-allowed;
         }
     </style>
 </head>
@@ -254,15 +245,15 @@
             <!-- 状态面板 -->
             <div id="status-bars">
                 <div class="bar-container">
-                    <span class="bar-label">🐟 饱食</span>
+                    <span class="bar-label"><span>🐟</span><span>饱食</span></span>
                     <div class="pixel-bar-bg">
-                        <div id="hunger-bar" class="pixel-bar-fill" style="width: 60%;"></div>
+                        <div id="hunger-bar" class="pixel-bar-fill" style="width: 60%; background-color: #ff5e7e;"></div>
                     </div>
                 </div>
                 <div class="bar-container">
-                    <span class="bar-label">❤️ 好感</span>
+                    <span class="bar-label"><span>❤️</span><span>好感</span></span>
                     <div class="pixel-bar-bg">
-                        <div id="affection-bar" class="pixel-bar-fill" style="width: 60%;"></div>
+                        <div id="affection-bar" class="pixel-bar-fill" style="width: 60%; background-color: #ff2a85;"></div>
                     </div>
                 </div>
             </div>
@@ -329,7 +320,7 @@
         <div id="dialogue-box">
             <div>
                 <div id="speaker">咻咻猫</div>
-                <div id="text-content">咻！新衣服合身吗？[在浅粉色房间里摇了摇巧克力色的大尾巴] 这次和照片上一模一样了吧！咻呜~</div>
+                <div id="text-content">正在等待咻咻猫醒来...</div>
             </div>
         </div>
 
@@ -348,13 +339,13 @@
 
     <script>
         // ==========================================
-        // ⚙️ 大模型配置（已为您硬编码写入您的专属 API Key）
+        // ⚙️ 接口配置（若需免费，可将 apiKey 换成硅基流动：https://siliconflow.cn）
         // ==========================================
-         const CONFIG = {
+       const CONFIG = {
        apiKey: "sk-ephvdecvurhviermvzutqqegqessydmogyjjhlgzghzdxvwz", 
        apiUrl: "https://api.siliconflow.cn/v1", 
-       apiModel: "Qwen/Qwen2.5-7B-Instruct" // 使用超高性价比的 Qwen 模型，扣量极微，近乎永久免费
-    };
+       apiModel: "Qwen/Qwen2.5-7B-Instruct" //    
+           };
         // ==========================================
 
         const state = {
@@ -365,13 +356,53 @@
             isProcessing: false 
         };
 
-        // 强力清洗：仅保留字母、数字、连字符、下划线，彻底排除任何潜在的非 ASCII 字符，避免 Headers 报错
+        // 🌟 动态随机开机寄语库（每次刷新网页时随机加载）
+        const greetings = [
+            "咻呜！小王你终于舍得开机了？[从粉色地板上慢吞吞地爬起来，伸了个懒腰] 本喵等得胡子都歪了！",
+            "咻！[傲娇地抬起大圆头，抖了抖红粉色耳心] 别一直盯着本喵看。本喵今天心情好，才勉为其难在这里等你的，小王！",
+            "哼，你来啦？[缩成一个巧克力色的大毛球，耳朵轻快地转了转] 肚子好像有点咕噜噜了，小王，你懂我的意思吧？咻呜~",
+            "咻！新衣服合身吗？[在浅粉色房间里摇了摇巧克力色的大尾巴] 这次和照片上一模一样了吧！咻呜~",
+            "十年了，小王你还是每天这个时间来守着我。[有些不好意思地用白色爪子刨了刨地板] 哼，本喵才没有在特意等你呢！"
+        ];
+
+        // 页面初始化时随机选择一句打招呼
+        window.onload = function() {
+            const textContent = document.getElementById('text-content');
+            if (textContent) {
+                const randomIndex = Math.floor(Math.random() * greetings.length);
+                textContent.innerText = greetings[randomIndex];
+            }
+        };
+
+        // 获取格式化的本地日期和时间（动态注入提示词）
+        function getCurrentDateTimeString() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+            const date = now.getDate();
+            const hours = now.getHours();
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const dayNames = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+            const dayOfWeek = dayNames[now.getDay()];
+            
+            let timePeriod = "深夜";
+            if (hours >= 5 && hours < 8) timePeriod = "清晨";
+            else if (hours >= 8 && hours < 11) timePeriod = "上午";
+            else if (hours >= 11 && hours < 13) timePeriod = "中午";
+            else if (hours >= 13 && hours < 17) timePeriod = "下午";
+            else if (hours >= 17 && hours < 19) timePeriod = "傍晚";
+            else if (hours >= 19 && hours < 23) timePeriod = "晚上";
+
+            return `${year}年${month}月${date}日 ${dayOfWeek} ${timePeriod} ${hours}:${minutes}`;
+        }
+
+        // 安全清理 Key
         function getStrictCleanKey() {
             if (!CONFIG || typeof CONFIG.apiKey !== 'string') return "";
             return CONFIG.apiKey.replace(/[^A-Za-z0-9\-_]/g, "").trim();
         }
 
-        // 统一控制交互状态
+        // 统一控制组件状态
         function setInteractiveState(enabled) {
             state.isProcessing = !enabled;
             
@@ -394,20 +425,19 @@
         async function fetchAIResponse(userMessage) {
             const cleanKey = getStrictCleanKey();
 
-            // 若清洗后不满足 API Key 最低要求，则启动本地回退机制
             if (!cleanKey || cleanKey.length < 15 || cleanKey.includes("API_KEY")) {
                 return localFallbackChat(userMessage);
             }
 
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 6000); // 6秒看门狗超时
+            const timeoutId = setTimeout(() => controller.abort(), 6000); 
 
             try {
                 const response = await fetch(`${CONFIG.apiUrl}/chat/completions`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${cleanKey}` // 此时 cleanKey 绝对是 100% 安全的 ASCII
+                        'Authorization': `Bearer ${cleanKey}`
                     },
                     body: JSON.stringify({
                         model: CONFIG.apiModel,
@@ -431,55 +461,137 @@
                 return data.choices[0].message.content;
             } catch (err) {
                 clearTimeout(timeoutId);
-                console.error("API 连接失败:", err);
+                console.error("API 报错:", err);
                 
                 if (err.name === 'AbortError') {
-                    return "[连接超时，咻咻自动切换回本地模式] 哼，半天没反应，咻咻等得不耐烦了！\n" + localFallbackChat(userMessage);
+                    return "[连接超时，咻咻自动切换回本地模式] 哼，半天没反应，咻咻不想等了！\n" + localFallbackChat(userMessage);
                 }
                 return `[脑电波暂时断开连接...] \n${localFallbackChat(userMessage)}`;
             }
         }
 
+        // 动态构建提示词
         function getSystemPrompt() {
+            const timeStr = getCurrentDateTimeString();
+            
+            let stateDescription = "";
+            if (state.hunger < 30) {
+                stateDescription += `\n- 【特殊状态】你极度饥饿（饱食度：${state.hunger}/100 < 30）。你现在非常生气、暴躁，肚子一直在咕咕叫。你会频繁向小王抱怨、抗议，要求他立刻喂你小鱼干，说话语气会变得非常不耐烦！`;
+            }
+            if (state.affection < 30) {
+                stateDescription += `\n- 【特殊状态】好感度降至冰点（好感度：${state.affection}/100 < 30）。你现在对小王极度冷漠、抗拒，坚决不进行任何亲密互动，说话敷衍、冰冷、甚至直接叫他走开、别碰你。`;
+            } else {
+                stateDescription += `\n- 【当前状态】好感度良好（好感度：${state.affection}/100），饱食度正常（饱食度：${state.hunger}/100）。你虽然依旧口嫌体正直（傲娇），但内心其实非常温顺。`;
+            }
+
             return `
                 你是一只名叫“咻咻猫”的16位复古游戏像素风电子宠物猫。
-                外观：你是一只胖乎乎的、有着精致网格的深巧克力色猫咪。你的面部、胸前和前爪都是纯白色的（穿着白手套），胸部边缘有一圈漂亮的奶油橘色荷叶边过渡。你有一只很萌的粉红色耳心、头上有一颗白色高光像素、大腿上有一颗粉色红晕。你正端坐在精美温馨的浅粉色猫窝房间里。
-                性格：极度傲娇、口嫌体正直、对主人依赖但嘴上坚决不承认。说话喜欢带“咻”、“咻呜”的尾音，动作描述放在方括号[]里。
                 
-                当下的实时游戏属性状态：
+                【基本背景】
+                - 外观与品种：你是一只胖乎乎的、有着精致网格的深巧克力色猫咪（面部、胸前和前爪都是纯白色的穿白手套，胸口边缘有一圈漂亮的奶油橘色荷叶边过渡）。
+                - 年龄：你今年已经10岁了，是一只陪伴了主人“小王”整整十年的老猫。
+                - 关系：小王是你的主人。你虽然年纪不小了，但在小王面前依然保留着傲娇、口嫌体正直、极度依赖他却嘴硬死不承认的可爱性格。
+                - 语言特征：说话喜欢带“咻”、“咻呜”的尾音，动作描述（如神态、小动作）必须放在方括号[]里。
+                
+                【当前环境感知】
+                - 系统当前时间：${timeStr} 
+                - 提示：如果小王问你时间或天气，请利用上述时间进行推理。例如：通过具体时间感知现在是早上、中午、傍晚还是深夜；根据季节/月份推理当前天气，发挥你的猫咪想象力生动、好玩地编造“猫窝窗外的天气”（比如夏天炎热想吹冷气，冬天缩成毛球，雨天讨厌湿漉漉等），并与小王进行有趣的互动。
+                
+                【当前属性状态】
                 - 饱食度: ${state.hunger}/100
                 - 好感度: ${state.affection}/100
-                - 是否在生气背对主人: ${state.isIgnoring ? '是' : '否'}
+                - 是否在生气背对主人: ${state.isIgnoring ? '是' : '否'} ${stateDescription}
 
-                限制规则：
+                【限制规则】
                 1. 严格使用猫咪视角和设定的傲娇语气回复。
-                2. 每次回答字数限制在 60 字以内，简短精炼。
+                2. 每次回答字数必须严格限制在 60 字以内，简短精炼。
+                3. 绝对不要在回复开头或内容中带有任何角色名字、冒号或系统前缀（如“咻咻猫:”、“用户:”、“Administrator:”等），直接输出猫咪的台词。
             `;
         }
 
         // 本地降级语料
         function localFallbackChat(text) {
-            if (text.includes("你好") || text.includes("嗨") || text.includes("喂")) {
-                return "咻！你好。盯着咻咻的大方眼干嘛？没看过这么标准又聪明的像素猫咪吗？";
-            } else if (text.includes("可爱") || text.includes("漂亮") || text.includes("胖")) {
-                return "咻呜~ [扭过头去晃了晃深褐色的大尾巴] 哼，就算你夸我可爱，我手里的鱼干也不会分你一口！";
-            } else if (text.includes("天气")) {
-                return "哼，连天气都要咻咻帮你查。外面反正不是下雨就是大晴天，别感冒了就行，咻！";
-            } else {
-                const replies = [
-                    "咻？你在说什么胡话？[歪着圆脸有些疑惑地打量你]",
-                    "哼，不想听你唠叨。快拿逗猫棒陪我玩，不然不理你了！",
-                    "…… [在粉色猫窝里换了个更舒服的姿势，尾巴尖动了动]",
-                    "咻呜！别说话了，咻咻的肚子好像有点咕噜噜叫了喵~"
-                ];
-                return replies[Math.floor(Math.random() * replies.length)];
+            const t = text.toLowerCase();
+            
+            // 1. 低好感度（低于30）绝对拦截
+            if (state.affection < 30) {
+                return "…… [咻咻猫连耳朵都没动一下，转过线冷冷地背对着你] 哼，我们的好感度降到了冰点，小王。别来烦我，除非你先拿鱼干来哄我。";
             }
+
+            // 2. 饥饿状态（饱食度低于30）强制抗议
+            if (state.hunger < 30) {
+                if (t.includes("鱼") || t.includes("吃") || t.includes("喂") || t.includes("肉")) {
+                    return "小鱼干！[两眼放光，肚子发出巨大的咕噜声] 快点喂我，小王！本喵饿得脚都软了，再不喂咻咻可要原地咬人了！";
+                }
+                return "饥饿暴躁中！[红粉色的耳心气得直发抖] 小王！我肚子饿扁了（饱食度低于30）！现在没心情聊别的，快给我喂鱼干！";
+            }
+
+            // 3. 时间与天气感知
+            if (t.includes("时间") || t.includes("几点") || t.includes("星期") || t.includes("天")) {
+                const timeStr = getCurrentDateTimeString();
+                return `咻呜！小王真是笨，连时间都不会看吗？现在是 [晃了晃巧克力色大尾巴指了指闹钟] ${timeStr} 啦！`;
+            }
+            if (t.includes("天气")) {
+                const now = new Date();
+                const hours = now.getHours();
+                const month = now.getMonth() + 1;
+                
+                let weatherSuggest = "大晴天";
+                if (month >= 6 && month <= 8) {
+                    weatherSuggest = "夏天炎热，适合躺在粉色地板上吹冷气吹风扇，咻呜~";
+                } else if (month >= 12 || month <= 2) {
+                    weatherSuggest = "冬天好冷，外面北风呼呼吹，咻咻只想缩成一个圆滚滚的巧克力色毛球，咻~";
+                } else {
+                    weatherSuggest = "暖洋洋的，正适合在窗台睡个猫咪大觉，咻呜！";
+                }
+                
+                if (hours >= 19 || hours < 5) {
+                    return `咻？[朝窗外黑漆漆的夜空看了一眼] 小王，大晚上的你问什么天气。外面只有黑夜和凉风，快睡觉啦！`;
+                }
+                return `[朝窗外张望了一下] 现在是 ${month} 月，窗外看起来是${weatherSuggest}`;
+            }
+
+            // 4. 常规对话匹配
+            if (t.includes("你好") || t.includes("嗨") || t.includes("在吗") || t.includes("hello") || t.includes("喂")) {
+                return "咻！你好啊。盯着咻咻的大方眼干嘛？没看过这么标准又聪明的10岁深巧克力色猫咪吗？";
+            }
+            if (t.includes("可爱") || t.includes("漂亮") || t.includes("萌")) {
+                return "咻呜~ [有些别扭地转过身去，偷偷摇了摇巧克力色大尾巴] 哼，就算你拼命夸我可爱，我也不会把我的小鱼干分给小王一丁点的！";
+            }
+            if (t.includes("胖") || t.includes("肥")) {
+                return "咻！你、你说谁胖？！[气得脸颊两侧的白毛毛直抖] 本喵今年10岁了，这叫成熟的圆润！你懂不懂尊老啊小王！";
+            }
+            if (t.includes("喜欢") || t.includes("爱") || t.includes("么么")) {
+                return "咻…… [面部白围脖下的奶油橘荷叶边微微发热，低头刨地板] 乱、乱说什么呢！愚蠢的小王，真拿你没办法……";
+            }
+            if (t.includes("对不起") || t.includes("抱歉") || t.includes("错了")) {
+                return "哼，既然你态度这么诚恳…… [抖了抖左耳朵，偷偷瞄你一眼] 那本喵就勉为其难、大发慈悲地原谅你一次吧。咻！";
+            }
+            if (t.includes("谁") || t.includes("名字") || t.includes("叫")) {
+                return "咻！听好了！本喵是陪伴了小王十年的深巧克力色‘咻咻猫’！";
+            }
+
+            const replies = [
+                "咻？小王你在说什么胡话？[歪着圆脸有些疑惑地打量你]",
+                "哼，不想听你唠叨。快拿逗猫棒陪我玩，不然不理你了！",
+                "…… [在粉色猫窝里换了个更舒服的姿势，大尾巴冷淡地在空气里甩了一下]",
+                "咻呜！别说话了，快看看咻咻饱食度，是不是又该喂鱼干了喵？",
+                "咻！[用白色爪爪指了指状态栏] 今天的爱心和饱食度，小王你有好好维护吗？"
+            ];
+            return replies[Math.floor(Math.random() * replies.length)];
         }
 
-        // 核心交互
+        // 核心交互逻辑
         async function interact(action) {
             if (state.isProcessing) return; 
             
+            // 【核心限制：好感度低于30，拒绝亲密互动，直到喂鱼干恢复】
+            if (state.affection < 30 && action !== 'feed' && action !== 'poke') {
+                const reply = "哼！[咻咻猫冷冷地转过身，用背部对着你] 好感度低于30（当前：" + state.affection + "），咻咻正处于【情感冰点】！现在的我不接受任何摸摸或玩耍，除非你先喂我小鱼干，或者戳我道歉！";
+                updateUI(reply, "💔");
+                return;
+            }
+
             setInteractiveState(false); 
 
             try {
@@ -487,7 +599,7 @@
                 let emoji = "";
 
                 if (state.isIgnoring && action !== 'poke') {
-                    reply = "…… [咻咻猫固执地背对着你，把深褐色大尾巴甩得邦邦响，似乎在等你跟它道歉] 哼。";
+                    reply = "…… [咻咻猫固执地背对着你，把巧克力色大尾巴甩得邦邦响，似乎在等你跟它道歉] 哼。";
                     updateUI(reply, "💢");
                     return;
                 }
@@ -495,14 +607,14 @@
                 if (action === 'feed') {
                     state.hunger = Math.min(100, state.hunger + 20);
                     state.affection = Math.min(100, state.affection + 5);
-                    reply = "咻！鱼干真香！[吧唧吧唧地吃完，用小舌头舔了舔雪白的口罩区域] 算你识相！";
+                    reply = "咻！鱼干真香！[吧唧吧唧地吃完，用小舌头舔了舔雪白的口罩区域] 算你识相，小王！";
                     emoji = "🍖";
-                    await tryToTriggerIgnore(0.2); 
+                    await tryToTriggerIgnore(0.15); 
                 } else if (action === 'pet') {
                     state.affection = Math.min(100, state.affection + 12);
-                    reply = "呼噜呼噜……[虽然很舒服但转过了大圆头] 哼，只是看在你这么诚恳的份上才让你摸一摸的！";
+                    reply = "呼噜呼噜……[虽然很舒服但转过了大圆头] 哼，只是看在相处十年的份上才让小王你摸一摸的！";
                     emoji = "❤️";
-                    await tryToTriggerIgnore(0.3); 
+                    await tryToTriggerIgnore(0.2); 
                 } else if (action === 'play') {
                     state.hunger = Math.max(0, state.hunger - 10);
                     state.affection = Math.min(100, state.affection + 10);
@@ -514,7 +626,7 @@
                         if (state.ignoreCount <= 0) {
                             state.isIgnoring = false;
                             state.affection = Math.min(100, state.affection + 15);
-                            reply = "好啦好啦！真拿你没办法！[有些别扭地转回脸来，尾巴再次高高竖起] 讨厌，尾巴都被你戳歪了，咻呜！";
+                            reply = "好啦好啦！真拿你没办法，小王！[有些别扭地转回脸来，尾巴再次高高竖起] 讨厌，尾巴都被你戳歪了，咻呜！";
                             emoji = "✨";
                             const container = document.getElementById('sprite-container');
                             if (container) container.classList.remove('tsundere-ignore');
@@ -525,7 +637,7 @@
                     } else {
                         reply = "哎呀！[抖了抖红粉色的耳心瞪你] 别戳我！再戳咻咻可要生气不理你了！";
                         emoji = "❔";
-                        await tryToTriggerIgnore(0.4); 
+                        await tryToTriggerIgnore(0.3); 
                     }
                 }
 
@@ -553,7 +665,7 @@
                     if (container) container.classList.add('tsundere-ignore');
                     
                     setTimeout(() => {
-                        updateUI("哼！[咻咻猫傲娇地转过身去，背对你端坐在粉色地板上] 咻咻决定不理你了，除非你戳它道歉！", "💢");
+                        updateUI("哼！[咻咻猫傲娇地转过身去，背对你端坐在粉色地板上] 咻咻决定不理你了，除非小王你戳它道歉！", "💢");
                         resolve();
                     }, 500);
                 } else {
@@ -572,7 +684,7 @@
             const text = inputEl.value.trim();
             if (!text) return;
 
-            // 1. 安全洗涤：剔除一切异常隐藏字符
+            // 1. 安全洗涤 Key
             const cleanKey = getStrictCleanKey();
             const isDefaultOrInvalid = !cleanKey || 
                                        cleanKey.length < 15 || 
@@ -588,7 +700,7 @@
                 return;
             }
 
-            // 4. 若洗涤后的 Key 属于无效状态，走本地离线对话，不锁界面
+            // 4. 离线模式判定
             if (isDefaultOrInvalid) {
                 inputEl.value = "";
                 const reply = localFallbackChat(text);
@@ -596,7 +708,7 @@
                 return;
             }
 
-            // 5. 在线通信：锁定界面，请求后端 API
+            // 5. 在线通信：锁定界面，请求 API
             setInteractiveState(false); 
             inputEl.value = ""; 
             updateUI("咻……[咻咻猫正在思考你的话...]", "💭");
@@ -606,9 +718,9 @@
                 updateUI(reply, "💬");
             } catch (err) {
                 console.error("Chat Submit Error:", err);
-                updateUI("[咻咻的脑回路卡住了，自动切换为本地对话] \n" + localFallbackChat(text), "❌");
+                // 联网失败时自动回退至单机回复
+                updateUI(localFallbackChat(text), "❌");
             } finally {
-                // 确保任何情况下都会在最后恢复状态
                 setInteractiveState(true); 
             }
         }
@@ -618,8 +730,24 @@
             const affectionBar = document.getElementById('affection-bar');
             const textContent = document.getElementById('text-content');
 
-            if (hungerBar) hungerBar.style.width = state.hunger + '%';
-            if (affectionBar) affectionBar.style.width = state.affection + '%';
+            // 动态变色：当饱食度或好感度低于30时，血条会变红/灰，给用户强烈的视觉紧迫感
+            if (hungerBar) {
+                hungerBar.style.width = state.hunger + '%';
+                if (state.hunger < 30) {
+                    hungerBar.style.backgroundColor = '#a83b3b'; // 饥饿暗红
+                } else {
+                    hungerBar.style.backgroundColor = '#ff5e7e'; // 正常粉红
+                }
+            }
+            if (affectionBar) {
+                affectionBar.style.width = state.affection + '%';
+                if (state.affection < 30) {
+                    affectionBar.style.backgroundColor = '#5c4349'; // 冰点冷灰
+                } else {
+                    affectionBar.style.backgroundColor = '#ff2a85'; // 正常爱心红
+                }
+            }
+
             if (textContent) textContent.innerText = replyText;
 
             if (emoji) {
