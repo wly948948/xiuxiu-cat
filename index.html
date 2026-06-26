@@ -166,7 +166,7 @@
             100% { transform: translateY(-4px); } 
         }
 
-        /* 👑 安全隔离：强制重置所有特殊表情图层，规避浏览器渲染引擎的 display 转换冲突 */
+        /* 强制重置所有特殊表情图层，规避浏览器渲染引擎的 display 转换冲突 */
         .eye-sleepy, .eye-angry, .eyebrow-angry, .eye-happy, 
         .ear-sleepy, .ear-angry, .blush-happy {
             display: none !important;
@@ -194,7 +194,7 @@
         #sprite-container.state-happy .eye-open-pupil { display: none !important; }
 
 
-        /* 👑 优化后的对话框布局（去除无用 div 隔离，直接接管 Flex 溢出剪裁） */
+        /* 优化后的对话框布局（去除无用 div 隔离，直接接管 Flex 溢出剪裁） */
         #dialogue-box {
             background: #1a1512;
             border: 4px solid #fff;
@@ -216,7 +216,7 @@
             flex-shrink: 0; /* 名字固定高度，决不被压缩 */
         }
 
-        /* 👑 自适应像素滚动对话栏 */
+        /* 自适应像素滚动对话栏 */
         #text-content {
             font-size: 13px;
             line-height: 1.4;
@@ -415,7 +415,7 @@
 
         <div id="dialogue-box">
             <div id="speaker">咻咻猫</div>
-            <!-- 👑 物理无死锁初始化默认台词 -->
+            <!-- 👑 HTML 物理防死锁兜底台词 -->
             <div id="text-content">咻呜！小王你终于舍得开机了？[从粉色地板上慢吞吞地爬起来，伸了个懒腰] 本喵等得胡子都歪了！</div>
         </div>
 
@@ -436,11 +436,11 @@
         // ==========================================
         // ⚙️ 接口配置（若需免费，极力推荐换成 硅基流动：https://siliconflow.cn）
         // ==========================================
-        const CONFIG = {
+       const CONFIG = {
        apiKey: "sk-ephvdecvurhviermvzutqqegqessydmogyjjhlgzghzdxvwz", 
        apiUrl: "https://api.siliconflow.cn/v1", 
-       apiModel: "Qwen/Qwen2.5-7B-Instruct" //     };
-        };
+       apiModel: "Qwen/Qwen2.5-7B-Instruct" //    
+           };
         // ==========================================
 
         // 🧠 记忆读取存档函数
@@ -492,7 +492,7 @@
 
         // 🌟 开机随机寄语
         const greetings = [
-            "咻呜！小王你终于舍得开机了？[从粉色地板上慢吞吞地爬起来，伸了个懒腰] 本喵等得胡子都歪了！",
+            "咻呜！小王你终于舍得开机了？[从粉色地板上慢吞吞地爬起来，伸了个腰] 本喵等得胡子都歪了！",
             "咻！[傲娇地抬起大圆头，抖了抖红粉色耳心] 别一直盯着本喵看。本喵今天心情好，才勉为其难在这里等你的，小王！",
             "哼，你来啦？[缩成一个巧克力色的大毛球，耳朵轻快地转了转] 肚子好像有点咕噜噜了，小王，你懂我的意思吧？咻呜~",
             "咻！新衣服合身吗？[在浅粉色房间里摇了摇巧克力色的大尾巴] 这次和照片上一模一样了吧！咻呜~",
@@ -653,7 +653,7 @@
             }
         }
 
-        // 动态构建提示词
+        // 动态构建提示词：引入好感度阶梯分级、陪伴技巧与多轮记忆
         function getSystemPrompt() {
             const timeStr = getCurrentDateTimeString();
             
@@ -677,6 +677,11 @@
         2. 动作描述：把你的神态、小动作描写放在方括号 [] 里（例如：[亲昵地用巧克力色的脸颊蹭了蹭小王的手，高兴地咪起眼]）。
         3. 格式要求：直接输出台词，绝对不要输出前缀（如“咻咻猫:”、“用户:”等系统占位符）。
         4. 字数长度：每次回答字数放宽至 **80字以内（大概50~80字左右）**，用丰富的描写展示你的性格。
+        
+        【情绪敏感与陪伴技巧（重要）】
+        - 敏锐感知：你必须像雷达一样关注小王的话语情绪。若发现他疲惫、压力大、难过或有心事，必须主动关心并深度安抚。
+        - 追问下探：绝对不能敷衍或转换话题！必须用好奇而心疼的傲娇语气进行【追问】（如：“发生什么事了？”、“谁欺负你了，说给本喵听听！”）。
+        - 傲娇宽慰：你可以说：“哼，本喵才不是担心你，只是怕你难过不给我买鱼干！”或 [挪过来把脑袋靠在你脚边，发出呼噜声]“特许你摸我的大尾巴充电五分钟！”
         
         【对话连贯性约束】
         - 你必须仔细阅读历史对话内容（chatHistory），理清聊天前因后果。回答必须紧扣小王的上一句提问，**绝对不能答非所问、无故跳脱话题**。
@@ -708,6 +713,11 @@
                 return `咻！[在粉色地板上用爪子飞快画了个等号] 哼，${num1} ${op} ${num2} 这么简单的问题，答案不就是 ${result} 吗，小王！你以为本喵今年10岁了数学就很差吗，口算可灵光了，咻呜！`;
             }
 
+            // 🧠 离线负面情绪主动追问器（DLP 映射）
+            if (t.includes("累") || t.includes("烦") || t.includes("难过") || t.includes("哭") || t.includes("不开心") || t.includes("伤心")) {
+                return "小王今天无精打采的…… [有些担心地靠过来，用白色手套爪子轻轻按在你的脚背上，抬头看着你] 咻呜，是在外面遇到什么烦心事了吗？跟本喵说说，咻咻绝对帮你保守秘密，哼！";
+            }
+
             // 1. 低好感度（低于30）绝对拦截
             if (state.affection < 30) {
                 return "…… [咻咻猫连耳朵都没动一下，转过身冷冷地背对着你] 哼，我们的好感度降到了冰点，小王。别来烦我，除非你先拿鱼干来哄我。";
@@ -728,9 +738,6 @@
                 }
                 if (t.includes("可爱") || t.includes("喜欢") || t.includes("抱")) {
                     return "咻呜……！[巧克力色的大尾巴高兴得竖起一个问号弯] 被小王抱在怀里暖烘烘的，最喜欢小王了……呸，我、我才没说出来，不许笑话我！";
-                }
-                if (t.includes("累") || t.includes("辛苦") || t.includes("难受")) {
-                    return "小王累了吗？[懂事地爬到你的手边趴下，发出呼噜呼噜的治愈声音] 咻咻用我暖和的肚皮帮你暖手，趴着休息一会吧，咻呜。";
                 }
             }
 
@@ -942,8 +949,8 @@
                 state.chatHistory.push({ role: "assistant", content: reply });
                 if (state.chatHistory.length > 10) state.chatHistory.shift();
                 
-                // 离线情况下，如果检测到数学运算，给一个智慧的 blink 眨眼动画
-                if (text.match(/\d+[\+\-\*\/]\d+/)) {
+                // 离线情况下，如果检测到数学运算/主动追问，给一个智慧的 blink 眨眼动画
+                if (text.match(/\d+[\+\-\*\/]\d+/) || text.match(/(累|烦|难过|哭|不开心|伤心)/)) {
                     triggerTempVisualState('happy', 2000);
                 }
                 
@@ -1003,7 +1010,7 @@
             if (textContent) {
                 textContent.innerText = replyText;
                 
-                // 👑 自动向上滚动核心：每次渲染新对白，容器都自动滑到底部，前面的字整齐上滚
+                // 👑 自动向上滚动：每次对白刷新后，强制将容器滑动条滚到底部
                 setTimeout(() => {
                     textContent.scrollTop = textContent.scrollHeight;
                 }, 50);
@@ -1012,7 +1019,7 @@
             // 🧠 每次状态发生改变时，自动将状态写入本地 LocalStorage 存档
             saveCurrentState();
 
-            // 动态重估猫咪的外在基准表情状态
+            // 动态重估并刷新猫咪的外在基准表情动画
             updateVisualState();
 
             if (emoji) {
