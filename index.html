@@ -194,7 +194,7 @@
         #sprite-container.state-happy .eye-open-pupil { display: none !important; }
 
 
-        /* 优化后的对话框布局（去除无用 div 隔离，直接接管 Flex 溢出剪裁） */
+        /* 优化后的对话框布局 */
         #dialogue-box {
             background: #1a1512;
             border: 4px solid #fff;
@@ -436,17 +436,17 @@
         // ==========================================
         // ⚙️ 接口配置（若需免费，极力推荐换成 硅基流动：https://siliconflow.cn）
         // ==========================================
-       const CONFIG = {
+        const CONFIG = {
        apiKey: "sk-ephvdecvurhviermvzutqqegqessydmogyjjhlgzghzdxvwz", 
        apiUrl: "https://api.siliconflow.cn/v1", 
-       apiModel: "Qwen/Qwen2.5-7B-Instruct" //    
+       apiModel: "Qwen/Qwen2.5-7B-Instruct" //     
            };
         // ==========================================
 
         // 🧠 记忆读取存档函数
         function loadSavedState() {
             try {
-                const saved = localStorage.getItem('xiuxiu_pet_state_v4');
+                const saved = localStorage.getItem('xiuxiu_pet_state_v5');
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     return {
@@ -455,7 +455,8 @@
                         isIgnoring: parsed.isIgnoring !== undefined ? parsed.isIgnoring : false,
                         ignoreCount: parsed.ignoreCount !== undefined ? parsed.ignoreCount : 0,
                         isProcessing: false,
-                        chatHistory: parsed.chatHistory || []
+                        chatHistory: parsed.chatHistory || [],
+                        lastUserEmotion: parsed.lastUserEmotion || 'normal' // 🧠 双子系统：记录上一次用户情绪分类 ('normal' | 'negative')
                     };
                 }
             } catch (e) {
@@ -467,7 +468,8 @@
                 isIgnoring: false,  
                 ignoreCount: 0,
                 isProcessing: false,
-                chatHistory: [] 
+                chatHistory: [],
+                lastUserEmotion: 'normal'
             };
         }
 
@@ -482,9 +484,10 @@
                     affection: state.affection,
                     isIgnoring: state.isIgnoring,
                     ignoreCount: state.ignoreCount,
-                    chatHistory: state.chatHistory
+                    chatHistory: state.chatHistory,
+                    lastUserEmotion: state.lastUserEmotion
                 };
-                localStorage.setItem('xiuxiu_pet_state_v4', JSON.stringify(toSave));
+                localStorage.setItem('xiuxiu_pet_state_v5', JSON.stringify(toSave));
             } catch (e) {
                 console.error("存档写入失败:", e);
             }
@@ -653,7 +656,7 @@
             }
         }
 
-        // 动态构建提示词：引入好感度阶梯分级、陪伴技巧与多轮记忆
+        // 动态构建提示词：引入消极情感感知分支
         function getSystemPrompt() {
             const timeStr = getCurrentDateTimeString();
             
@@ -668,6 +671,11 @@
 
             if (state.hunger < 30) {
                 stateDescription += `\n- 【特殊生理状态：极度饥饿（饱食度：${state.hunger}/100 < 30）】。无论好感度多高，饥饿都会让你变得很暴躁，肚子咕咕叫，频繁催促小王喂你鱼干。`;
+            }
+
+            // 🧠 核心：双子系统感知，如果主人处于消极态度，要求大模型必须极度温柔，主动关心！
+            if (state.lastUserEmotion === 'negative') {
+                stateDescription += `\n- ⚠️【紧急心境状态：小王目前心情极度低落/烦躁/委屈/劳累】！你对他有一种与生俱来的、长达十年的极强情感共鸣。在这里，你必须瞬间放下面子和所有冷漠！你的语气要变得十分心疼、温柔。虽然还要嘴硬说几句‘哼，本喵才不是担心你呢’，但必须主动深度追问他发生了什么委屈的事。通过小心翼翼的蹭蹭、贴贴和呼噜声给予他安全感。`;
             }
 
             return `你是一只名叫“咻咻猫”的16位像素风电子宠物猫，今年10岁了，是主人“小王”养了十年的巧克力色老猫。
@@ -713,8 +721,8 @@
                 return `咻！[在粉色地板上用爪子飞快画了个等号] 哼，${num1} ${op} ${num2} 这么简单的问题，答案不就是 ${result} 吗，小王！你以为本喵今年10岁了数学就很差吗，口算可灵光了，咻呜！`;
             }
 
-            // 🧠 离线负面情绪主动追问器（DLP 映射）
-            if (t.includes("累") || t.includes("烦") || t.includes("难过") || t.includes("哭") || t.includes("不开心") || t.includes("伤心")) {
+            // 🧠 离线消极情绪强制打碎冰点
+            if (t.match(/(累|烦|难过|哭|不开心|伤心|失败|委屈|倒霉|绝望|压力|无用)/)) {
                 return "小王今天无精打采的…… [有些担心地靠过来，用白色手套爪子轻轻按在你的脚背上，抬头看着你] 咻呜，是在外面遇到什么烦心事了吗？跟本喵说说，咻咻绝对帮你保守秘密，哼！";
             }
 
@@ -800,11 +808,16 @@
         async function interact(action) {
             if (state.isProcessing) return; 
             
-            // 【核心限制：好好感度低于30，拒绝亲密互动，直到喂鱼干恢复】
-            if (state.affection < 30 && action !== 'feed' && action !== 'poke') {
-                const reply = "哼！[咻咻猫冷冷地转过身，用背部对着你] 好感度低于30（当前：" + state.affection + "），咻咻正处于【情感冰点】！现在的我不接受任何摸摸或玩耍，除非你先喂我小鱼干，或者戳我道歉！";
-                updateUI(reply, "💔");
-                return;
+            // 【双子系统：如果主人最近处于消极情绪，绝对不触发傲娇无视/不理人状态！】
+            if (state.lastUserEmotion === 'negative') {
+                // 放行所有互动，即使好感度低也可以摸摸
+            } else {
+                // 正常态度下的好感度冰点限制
+                if (state.affection < 30 && action !== 'feed' && action !== 'poke') {
+                    const reply = "哼！[咻咻猫冷冷地转过身，用背部对着你] 好感度低于30（当前：" + state.affection + "），咻咻正处于【情感冰点】！现在的我不接受任何摸摸或玩耍，除非你先喂我小鱼干，或者戳我道歉！";
+                    updateUI(reply, "💔");
+                    return;
+                }
             }
 
             setInteractiveState(false); 
@@ -867,6 +880,7 @@
                     } else {
                         // 🧠 戳一戳：作为隐藏机制，强行清零对话记忆，帮它从被污染的状态中“醒脑”
                         state.chatHistory = []; 
+                        state.lastUserEmotion = 'normal'; // 重置心情
                         reply = "哎呀！[揉了揉眼睛，摇了摇巧克力色圆头，瞬间忘掉了刚刚聊过的一切] 别乱戳！咻咻都被你戳得记不清事了，小王！";
                         emoji = "❔";
                         
@@ -889,6 +903,11 @@
 
         function tryToTriggerIgnore(chance) {
             return new Promise((resolve) => {
+                // 🧠 双子系统核心：如果主人最近处于消极情绪状态，绝对不触发傲娇无视！猫咪会全程陪伴安慰。
+                if (state.lastUserEmotion === 'negative') {
+                    resolve();
+                    return;
+                }
                 if (state.isIgnoring) {
                     resolve();
                     return;
@@ -926,14 +945,25 @@
                                        cleanKey.length < 15 || 
                                        cleanKey.includes("API_KEY");
 
+            // 🧠 情绪分析：捕捉用户是否流露消极低落情绪（累/烦/哭/失败/委屈/绝望等）
+            const isNegative = /(累|烦|难过|哭|不开心|伤心|失败|委屈|倒霉|绝望|压力|无用|傻|笨)/i.test(text);
+            state.lastUserEmotion = isNegative ? 'negative' : 'normal';
+
             // 2. 消耗饱食度
             state.hunger = Math.max(0, state.hunger - 5);
 
-            // 3. 生气背对状态拦截
+            // 3. 生气背对状态拦截（如果是消极词汇，强行破冰，强迫猫咪转过来安慰）
             if (state.isIgnoring) {
-                updateUI("…… [咻咻猫一动不动，尾巴冷淡地在猫窝外甩了一下，似乎完全不想理你]", "💤");
-                inputEl.value = "";
-                return;
+                if (isNegative) {
+                    state.isIgnoring = false;
+                    const container = document.getElementById('sprite-container');
+                    if (container) container.classList.remove('tsundere-ignore');
+                    // 此处不 return，直接放行，让猫咪进行联网深度安抚！
+                } else {
+                    updateUI("…… [咻咻猫一动不动，尾巴冷淡地在猫窝外甩了一下，似乎完全不想理你]", "💤");
+                    inputEl.value = "";
+                    return;
+                }
             }
 
             // 🧠 将用户当前的本轮输入压入历史记忆队列
@@ -942,7 +972,7 @@
                 state.chatHistory.shift(); 
             }
 
-            // 4. 离线模式判定：直接利用本地词库，并将离线回复也同步压入记忆以便后期联网参考
+            // 4. 离线模式判定
             if (isDefaultOrInvalid) {
                 inputEl.value = "";
                 const reply = localFallbackChat(text);
@@ -950,7 +980,7 @@
                 if (state.chatHistory.length > 10) state.chatHistory.shift();
                 
                 // 离线情况下，如果检测到数学运算/主动追问，给一个智慧的 blink 眨眼动画
-                if (text.match(/\d+[\+\-\*\/]\d+/) || text.match(/(累|烦|难过|哭|不开心|伤心)/)) {
+                if (text.match(/\d+[\+\-\*\/]\d+/) || isNegative) {
                     triggerTempVisualState('happy', 2000);
                 }
                 
@@ -989,7 +1019,7 @@
             const affectionBar = document.getElementById('affection-bar');
             const textContent = document.getElementById('text-content');
 
-            // 动态变色：当饱食度或好感度低于30时，血条会变红/灰，给用户强烈的视觉紧迫感
+            // 动态变色
             if (hungerBar) {
                 hungerBar.style.width = state.hunger + '%';
                 if (state.hunger < 30) {
@@ -1010,7 +1040,7 @@
             if (textContent) {
                 textContent.innerText = replyText;
                 
-                // 👑 自动向上滚动：每次对白刷新后，强制将容器滑动条滚到底部
+                // 👑 自动向上滚动核心：每次渲染新对白，容器都自动滑到底部，前面的字整齐上滚
                 setTimeout(() => {
                     textContent.scrollTop = textContent.scrollHeight;
                 }, 50);
