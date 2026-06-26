@@ -76,14 +76,13 @@
             text-shadow: 1px 1px 0px #4e3522, -1px -1px 0px #4e3522, 1px -1px 0px #4e3522, -1px 1px 0px #4e3522;
         }
 
-        /* 👑 优化后的标签排版样式：图标最前，文字一排，居中对齐，不换行 */
         .bar-label {
             display: flex;
             align-items: center;
-            gap: 6px;                /* 图标与文字之间的微调间距 */
-            white-space: nowrap;     /* 强制文字排在同一排，永不换行 */
-            min-width: 65px;         /* 统一对齐宽度 */
-            margin-right: 5px;       /* 与血条之间的留白间距 */
+            gap: 6px;                
+            white-space: nowrap;     
+            min-width: 65px;         
+            margin-right: 5px;       
         }
         
         .pixel-bar-bg {
@@ -245,13 +244,13 @@
             <!-- 状态面板 -->
             <div id="status-bars">
                 <div class="bar-container">
-                    <span class="bar-label"><span>🐟</span><span>饱食</span></span>
+                    <span class="bar-label">🐟 饱食</span>
                     <div class="pixel-bar-bg">
                         <div id="hunger-bar" class="pixel-bar-fill" style="width: 60%; background-color: #ff5e7e;"></div>
                     </div>
                 </div>
                 <div class="bar-container">
-                    <span class="bar-label"><span>❤️</span><span>好感</span></span>
+                    <span class="bar-label">❤️ 好感</span>
                     <div class="pixel-bar-bg">
                         <div id="affection-bar" class="pixel-bar-fill" style="width: 60%; background-color: #ff2a85;"></div>
                     </div>
@@ -339,13 +338,12 @@
 
     <script>
         // ==========================================
-        // ⚙️ 接口配置（若需免费，可将 apiKey 换成硅基流动：https://siliconflow.cn）
+        // ⚙️ 接口配置（若要免费，极力推荐换成 硅基流动：https://siliconflow.cn）
         // ==========================================
-       const CONFIG = {
+          const CONFIG = {
        apiKey: "sk-ephvdecvurhviermvzutqqegqessydmogyjjhlgzghzdxvwz", 
        apiUrl: "https://api.siliconflow.cn/v1", 
-       apiModel: "Qwen/Qwen2.5-7B-Instruct" //    
-           };
+       apiModel: "Qwen/Qwen2.5-7B-Instruct" //     };
         // ==========================================
 
         const state = {
@@ -353,7 +351,8 @@
             affection: 60,
             isIgnoring: false,  
             ignoreCount: 0,
-            isProcessing: false 
+            isProcessing: false,
+            chatHistory: [] // 🧠 短期对话滚动记忆（最大保存 5 轮）
         };
 
         // 🌟 动态随机开机寄语库（每次刷新网页时随机加载）
@@ -432,6 +431,12 @@
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 6000); 
 
+            // 构建带有历史记忆的 messages 负载
+            const messagesPayload = [
+                { role: "system", content: getSystemPrompt() },
+                ...state.chatHistory 
+            ];
+
             try {
                 const response = await fetch(`${CONFIG.apiUrl}/chat/completions`, {
                     method: 'POST',
@@ -441,12 +446,9 @@
                     },
                     body: JSON.stringify({
                         model: CONFIG.apiModel,
-                        messages: [
-                            { role: "system", content: getSystemPrompt() },
-                            { role: "user", content: userMessage }
-                        ],
+                        messages: messagesPayload,
                         max_tokens: 150,
-                        temperature: 0.8
+                        temperature: 0.6 // 降低温度以获得更理性的对话体验
                     }),
                     signal: controller.signal
                 });
@@ -476,37 +478,26 @@
             
             let stateDescription = "";
             if (state.hunger < 30) {
-                stateDescription += `\n- 【特殊状态】你极度饥饿（饱食度：${state.hunger}/100 < 30）。你现在非常生气、暴躁，肚子一直在咕咕叫。你会频繁向小王抱怨、抗议，要求他立刻喂你小鱼干，说话语气会变得非常不耐烦！`;
+                stateDescription += `\n你当前极度饥饿（饱食度：${state.hunger}/100 < 30）。你现在非常生气、暴躁，肚子一直在咕咕叫。请在发言中强烈抱怨、抗议，要求小王立刻喂你小鱼干，语气变得非常暴躁不耐烦！`;
             }
             if (state.affection < 30) {
-                stateDescription += `\n- 【特殊状态】好感度降至冰点（好感度：${state.affection}/100 < 30）。你现在对小王极度冷漠、抗拒，坚决不进行任何亲密互动，说话敷衍、冰冷、甚至直接叫他走开、别碰你。`;
+                stateDescription += `\n你当前对小王极其冷漠（好感度：${state.affection}/100 < 30）。你坚决拒绝亲密，说话极其敷衍、冷冰冰，拒绝与他交流。`;
             } else {
-                stateDescription += `\n- 【当前状态】好感度良好（好感度：${state.affection}/100），饱食度正常（饱食度：${state.hunger}/100）。你虽然依旧口嫌体正直（傲娇），但内心其实非常温顺。`;
+                stateDescription += `\n你当前心情不错（好感度：${state.affection}/100）。你性格极其傲娇（口嫌体正直），虽然依赖小王但嘴硬死不承认。`;
             }
 
-            return `
-                你是一只名叫“咻咻猫”的16位复古游戏像素风电子宠物猫。
-                
-                【基本背景】
-                - 外观与品种：你是一只胖乎乎的、有着精致网格的深巧克力色猫咪（面部、胸前和前爪都是纯白色的穿白手套，胸口边缘有一圈漂亮的奶油橘色荷叶边过渡）。
-                - 年龄：你今年已经10岁了，是一只陪伴了主人“小王”整整十年的老猫。
-                - 关系：小王是你的主人。你虽然年纪不小了，但在小王面前依然保留着傲娇、口嫌体正直、极度依赖他却嘴硬死不承认的可爱性格。
-                - 语言特征：说话喜欢带“咻”、“咻呜”的尾音，动作描述（如神态、小动作）必须放在方括号[]里。
-                
-                【当前环境感知】
-                - 系统当前时间：${timeStr} 
-                - 提示：如果小王问你时间或天气，请利用上述时间进行推理。例如：通过具体时间感知现在是早上、中午、傍晚还是深夜；根据季节/月份推理当前天气，发挥你的猫咪想象力生动、好玩地编造“猫窝窗外的天气”（比如夏天炎热想吹冷气，冬天缩成毛球，雨天讨厌湿漉漉等），并与小王进行有趣的互动。
-                
-                【当前属性状态】
-                - 饱食度: ${state.hunger}/100
-                - 好感度: ${state.affection}/100
-                - 是否在生气背对主人: ${state.isIgnoring ? '是' : '否'} ${stateDescription}
-
-                【限制规则】
-                1. 严格使用猫咪视角和设定的傲娇语气回复。
-                2. 每次回答字数必须严格限制在 60 字以内，简短精炼。
-                3. 绝对不要在回复开头或内容中带有任何角色名字、冒号或系统前缀（如“咻咻猫:”、“用户:”、“Administrator:”等），直接输出猫咪的台词。
-            `;
+            return `你是一只名叫“咻咻猫”的16位像素风电子宠物猫，今年10岁了，是主人“小王”养了十年的巧克力色老猫。
+        
+        【设定规则】
+        1. 语气：极度傲娇、任性、嘴硬，但内心其实很黏小王。说话喜欢带“咻”或“咻呜”的尾音。
+        2. 动作描述：把你的神态、小动作描写放在方括号 [] 里（例如：[抖了抖巧克力色的小耳朵]）。
+        3. 格式要求：直接输出你的台词，绝对不要输出任何前缀（例如绝对不要输出 “咻咻猫：”、“回复：” 或任何英文系统词汇）。
+        4. 字数要求：每次回答必须严格限制在 50 字以内，简短傲娇。
+        
+        【当前环境感知】
+        - 当前系统时间：${timeStr}
+        - 提示：如果小王问你时间或天气，请利用上述时间进行合乎季节的、猫咪视角的趣味推理（比如夏天炎热想吹风扇、深夜想睡觉、星期一不想小王去上班等）。
+        ${stateDescription}`;
         }
 
         // 本地降级语料
@@ -515,7 +506,7 @@
             
             // 1. 低好感度（低于30）绝对拦截
             if (state.affection < 30) {
-                return "…… [咻咻猫连耳朵都没动一下，转过线冷冷地背对着你] 哼，我们的好感度降到了冰点，小王。别来烦我，除非你先拿鱼干来哄我。";
+                return "…… [咻咻猫连耳朵都没动一下，转过身冷冷地背对着你] 哼，我们的好感度降到了冰点，小王。别来烦我，除非你先拿鱼干来哄我。";
             }
 
             // 2. 饥饿状态（饱食度低于30）强制抗议
@@ -635,9 +626,11 @@
                             emoji = "💢";
                         }
                     } else {
-                        reply = "哎呀！[抖了抖红粉色的耳心瞪你] 别戳我！再戳咻咻可要生气不理你了！";
+                        // 🧠 戳一戳作为隐藏机制，顺便帮猫咪“醒脑”（强行重置/清空已污染的历史记忆队列）
+                        state.chatHistory = []; 
+                        reply = "哎呀！[揉了揉眼睛，摇了摇圆头，瞬间忘掉了刚刚聊过的一切] 别乱戳！咻咻都被你戳得记不清事了，小王！";
                         emoji = "❔";
-                        await tryToTriggerIgnore(0.3); 
+                        await tryToTriggerIgnore(0.1); 
                     }
                 }
 
@@ -700,10 +693,19 @@
                 return;
             }
 
-            // 4. 离线模式判定
+            // 🧠 将用户当前的本轮输入压入历史记忆队列
+            state.chatHistory.push({ role: "user", content: text });
+            if (state.chatHistory.length > 10) {
+                state.chatHistory.shift(); // 限制队列最大长度为 10 条（5轮对话）
+            }
+
+            // 4. 离线模式判定：直接利用本地词库，并将离线回复也同步压入记忆以便后期联网参考
             if (isDefaultOrInvalid) {
                 inputEl.value = "";
                 const reply = localFallbackChat(text);
+                state.chatHistory.push({ role: "assistant", content: reply });
+                if (state.chatHistory.length > 10) state.chatHistory.shift();
+                
                 updateUI(reply, "💬");
                 return;
             }
@@ -715,11 +717,20 @@
 
             try {
                 const reply = await fetchAIResponse(text);
+                
+                // 🧠 将大模型返回的猫咪话语也记入历史队列中
+                state.chatHistory.push({ role: "assistant", content: reply });
+                if (state.chatHistory.length > 10) state.chatHistory.shift();
+
                 updateUI(reply, "💬");
             } catch (err) {
                 console.error("Chat Submit Error:", err);
-                // 联网失败时自动回退至单机回复
-                updateUI(localFallbackChat(text), "❌");
+                const fallbackReply = localFallbackChat(text);
+                // 联网失败的单机降级对话同样存入记忆队列，确保思路连贯
+                state.chatHistory.push({ role: "assistant", content: fallbackReply });
+                if (state.chatHistory.length > 10) state.chatHistory.shift();
+                
+                updateUI(fallbackReply, "❌");
             } finally {
                 setInteractiveState(true); 
             }
