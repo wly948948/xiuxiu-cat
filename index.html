@@ -319,7 +319,8 @@
         <div id="dialogue-box">
             <div>
                 <div id="speaker">咻咻猫</div>
-                <div id="text-content">正在等待咻咻猫醒来...</div>
+                <!-- 👑 HTML 物理防死锁兜底：直接写上一句精美的初始寄语，即使脚本因缓存未执行，咻咻猫也是清醒且有台词的！ -->
+                <div id="text-content">咻呜！小王你终于舍得开机了？[从粉色地板上慢吞吞地爬起来，伸了个懒腰] 本喵等得胡子都歪了！</div>
             </div>
         </div>
 
@@ -340,20 +341,18 @@
         // ==========================================
         // ⚙️ 接口配置（若需免费，极力推荐换成 硅基流动：https://siliconflow.cn）
         // ==========================================
-      const CONFIG = {
-       apiKey: "sk-ephvdecvurhviermvzutqqegqessydmogyjjhlgzghzdxvwz", 
-       apiUrl: "https://api.siliconflow.cn/v1", 
-       apiModel: "Qwen/Qwen2.5-7B-Instruct" //     };
+        const CONFIG = {
+            apiKey: "sk-7ab387a1cb474f6db6976ea3a8aef8f5", // 👈 填入您的 API Key（如无余额将自动无缝开启超能单机版）
+            apiUrl: "https://api.deepseek.com/v1", 
+            apiModel: "deepseek-chat" 
+        };
         // ==========================================
 
-        const state = {
-            hunger: 60,
-            affection: 60,
-            isIgnoring: false,  
-            ignoreCount: 0,
-            isProcessing: false,
-            chatHistory: [] // 🧠 短期对话滚动记忆（最大保存 5 轮）
-        };
+         const CONFIG = {
+       apiKey: "sk-ephvdecvurhviermvzutqqegqessydmogyjjhlgzghzdxvwz", 
+       apiUrl: "https://api.siliconflow.cn/v1", 
+       apiModel: "Qwen/Qwen2.5-7B-Instruct" //    
+           };
 
         // 🌟 动态随机开机寄语库
         const greetings = [
@@ -364,7 +363,7 @@
             "十年了，小王你还是每天这个时间来守着我。[有些不好意思地用白色爪子刨了刨地板] 哼，本喵才没有在特意等你呢！"
         ];
 
-        // 👑 醒脑初始化（立即同步执行，彻底剔除 window.onload，解决慢加载下卡在“正在等待咻咻猫醒来”的问题）
+        // 👑 醒脑初始化（立即同步执行一次，彻底剔除 window.onload，解决慢加载下卡在“正在等待咻咻猫醒来”的问题）
         function wakeupXiuXiu() {
             const textContent = document.getElementById('text-content');
             if (textContent) {
@@ -372,7 +371,7 @@
                 textContent.innerText = greetings[randomIndex];
             }
         }
-        // 立刻执行一次唤醒
+        // 立刻执行唤醒（不用等页面所有资源加载完）
         wakeupXiuXiu();
 
         // 获取格式化的本地日期和时间（动态注入提示词）
@@ -488,7 +487,7 @@
                 stateDescription += `\n你当前心情不错（好感度：${state.affection}/100）。你性格极其傲娇（口嫌体正直），虽然依赖小王但嘴硬死不承认。`;
             }
 
-            return `你是一只名叫“咻咻猫”的16位像素风电子宠物猫，今年10岁了，是主人“小王”养了十年的巧克力色老猫。
+            return `你是一只名叫“咻咻猫”的16位像素风电子宠物猫，今年10岁了，是主人“小王”养了十年的巧克力色小猫。
         
         【设定规则】
         1. 语气：极度傲娇、任性、嘴硬，但内心其实很黏小王。说话喜欢带“咻”或“咻呜”的尾音。
@@ -516,7 +515,7 @@
                 if (t.includes("鱼") || t.includes("吃") || t.includes("喂") || t.includes("肉")) {
                     return "小鱼干！[两眼放光，肚子发出巨大的咕噜声] 快点喂我，小王！本喵饿得脚都软了，再不喂咻咻可要原地咬人了！";
                 }
-                return "饥饿暴躁中！[红粉色的耳心气得直发抖] 小王！我肚子饿扁了（饱食度低于30）！现没心情聊别的，快给我喂鱼干！";
+                return "饥饿暴躁中！[红粉色的耳心气得直发抖] 小王！我肚子饿扁了（饱食度低于30）！现在没心情聊别的，快给我喂鱼干！";
             }
 
             // 3. 时间与天气感知
@@ -539,7 +538,7 @@
                 }
                 
                 if (hours >= 19 || hours < 5) {
-                    return `咻？[朝窗外黑漆漆的夜空看了一眼] 小王，大晚上的你问什么天气。外面只有黑夜和凉风，快睡觉啦！`;
+                    return `咻？[朝窗外黑漆漆的夜空看了一眼] 小王，大晚上的你问什么天气。外面只有黑夜 and 凉风，快睡觉啦！`;
                 }
                 return `[朝窗外张望了一下] 现在是 ${month} 月，窗外看起来是${weatherSuggest}`;
             }
@@ -628,7 +627,7 @@
                             emoji = "💢";
                         }
                     } else {
-                        // 🧠 戳一戳作为隐藏机制，顺便帮猫咪“醒脑”（强行重置/清空已污染的历史记忆队列）
+                        // 🧠 戳一戳：作为隐藏机制，强行清零对话记忆，帮它从被污染的状态中“醒脑”
                         state.chatHistory = []; 
                         reply = "哎呀！[揉了揉眼睛，摇了摇圆头，瞬间忘掉了刚刚聊过的一切] 别乱戳！咻咻都被你戳得记不清事了，小王！";
                         emoji = "❔";
