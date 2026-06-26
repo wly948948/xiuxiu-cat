@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>咻咻猫的 16-bit 智能猫窝</title>
+    <title>咻咻猫的 16-bit 像素猫窝</title>
     <style>
-        /* 16-bit 复古像素风 UI 样式 */
+        /* 全局复古游戏机风格复位 */
         body {
-            background-color: #2c251e;
+            background-color: #231c16;
             font-family: "Courier New", Courier, monospace, "Microsoft YaHei";
             display: flex;
             justify-content: center;
@@ -17,100 +17,118 @@
             color: #fff;
         }
 
+        /* 游戏机外壳 */
         #game-console {
-            width: 400px;
-            background: #8b7355; 
-            border: 6px solid #4a3b2c;
-            border-radius: 12px;
-            box-shadow: 0 10px 0 #2c2117, 0 20px 20px rgba(0,0,0,0.5);
-            padding: 15px;
+            width: 420px;
+            background: #9d744a; 
+            border: 6px solid #4a311c;
+            border-radius: 16px;
+            box-shadow: 0 12px 0 #28190e, 0 20px 30px rgba(0,0,0,0.6);
+            padding: 20px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 15px;
             position: relative;
         }
 
+        /* 游戏屏幕（增加 CRT 显像管扫描线效果） */
         #game-screen {
-            background: linear-gradient(to bottom, #ffe4b5, #ffd39b); 
-            border: 6px solid #4a3b2c;
-            border-radius: 6px;
-            height: 260px;
+            background: linear-gradient(to bottom, #fcd0a1, #e39f67); 
+            border: 6px solid #4a311c;
+            border-radius: 8px;
+            height: 280px;
             position: relative;
             overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
         }
 
+        /* CRT 扫描线和像素颗粒滤镜 */
+        #game-screen::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.04), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.04));
+            z-index: 5;
+            background-size: 100% 3px, 3px 100%;
+            pointer-events: none;
+        }
+
+        /* 像素风状态栏 */
         #status-bars {
             position: absolute;
-            top: 10px;
-            left: 10px;
+            top: 15px;
+            left: 15px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 8px;
             z-index: 10;
         }
 
         .bar-container {
             display: flex;
             align-items: center;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: bold;
-            color: #4a3b2c;
-            text-shadow: 1px 1px 0px #fff;
+            color: #fff;
+            text-shadow: 1px 1px 0px #4a311c, -1px -1px 0px #4a311c, 1px -1px 0px #4a311c, -1px 1px 0px #4a311c;
         }
 
         .bar-label { width: 45px; }
         
+        /* 像素格子化进度条 */
         .pixel-bar-bg {
-            width: 80px;
-            height: 12px;
-            background: #e2d1bc;
-            border: 2px solid #4a3b2c;
+            width: 90px;
+            height: 14px;
+            background: #e5c39c;
+            border: 3px solid #4a311c;
             margin-left: 5px;
+            box-shadow: inset 2px 2px 0px rgba(0,0,0,0.1);
         }
 
         .pixel-bar-fill {
             height: 100%;
-            background: #ff4500; 
+            background: #ff3c00; 
             width: 60%;
-            transition: width 0.3s;
+            transition: width-change 0.3s;
+            box-shadow: inset -2px -2px 0px rgba(0,0,0,0.2);
         }
-        #affection-bar { background: #ff1493; }
+        #affection-bar { background: #ff3399; }
 
-        /* 咻咻猫精灵图容器 */
+        /* 咻咻猫精灵图（支持旋转转身） */
         #sprite-container {
             position: absolute;
-            bottom: 20px;
-            width: 200px;
-            height: 180px;
+            bottom: 10px;
+            width: 220px;
+            height: 220px;
             display: flex;
             justify-content: center;
             align-items: center;
-            transition: transform 0.5s ease;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        /* 傲娇状态：猫咪会水平翻转（背对你） */
         #sprite-container.tsundere-ignore {
             transform: scaleX(-1);
         }
 
         @keyframes breathe {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.03) translateY(-2px); }
+            0%, 100% { transform: scale(1) translateY(0); }
+            50% { transform: scale(1.04, 0.96) translateY(2px); }
         }
 
         svg.cat-sprite {
-            width: 130px;
-            height: 130px;
-            animation: breathe 3s infinite ease-in-out;
+            width: 170px;
+            height: 170px;
+            animation: breathe 3.5s infinite ease-in-out;
             image-rendering: pixelated;
         }
 
         .emoji-effect {
             position: absolute;
-            font-size: 24px;
+            font-size: 28px;
             animation: floatUp 1s ease-out forwards;
             pointer-events: none;
             z-index: 100;
@@ -118,16 +136,17 @@
 
         @keyframes floatUp {
             0% { transform: translateY(0) scale(1); opacity: 1; }
-            100% { transform: translateY(-80px) scale(1.5); opacity: 0; }
+            100% { transform: translateY(-90px) scale(1.4); opacity: 0; }
         }
 
+        /* 游戏对话框 */
         #dialogue-box {
-            background: #1e1e1e;
+            background: #181410;
             border: 4px solid #fff;
-            outline: 2px solid #1e1e1e;
+            outline: 2px solid #181410;
             border-radius: 4px;
             height: 110px;
-            padding: 10px;
+            padding: 12px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
@@ -136,9 +155,10 @@
 
         #speaker {
             font-size: 11px;
-            color: #ffaa00;
+            color: #ffb834;
             font-weight: bold;
             margin-bottom: 2px;
+            letter-spacing: 1px;
         }
 
         #text-content {
@@ -149,6 +169,7 @@
             flex-grow: 1;
         }
 
+        /* 控制按钮 */
         #buttons-panel {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -156,27 +177,28 @@
         }
 
         .pixel-btn {
-            background: #e2a85c;
-            border: 3px solid #4a3b2c;
+            background: #d49a55;
+            border: 3px solid #4a311c;
             border-radius: 4px;
-            color: #3b2d1f;
+            color: #2c190a;
             font-size: 11px;
             font-weight: bold;
             padding: 10px 0;
             cursor: pointer;
-            box-shadow: inset -2px -2px 0px #b27a35, 2px 2px 0px #2c2117;
+            box-shadow: inset -2px -2px 0px #a46d2f, 2px 2px 0px #2c190a;
             outline: none;
         }
 
         .pixel-btn:active {
-            box-shadow: inset 2px 2px 0px #b27a35;
+            box-shadow: inset 2px 2px 0px #a46d2f;
             transform: translate(1px, 1px);
         }
 
         #btn-poke {
-            background: #5ca8e2;
-            border-color: #2c3b4a;
-            box-shadow: inset -2px -2px 0px #357ab2, 2px 2px 0px #17212c;
+            background: #5398d9;
+            border-color: #224363;
+            box-shadow: inset -2px -2px 0px #2f6ea6, 2px 2px 0px #14273b;
+            color: #fff;
         }
 
         #chat-input-area {
@@ -186,8 +208,8 @@
 
         #chat-input {
             flex: 1;
-            background: #222;
-            border: 3px solid #4a3b2c;
+            background: #181410;
+            border: 3px solid #4a311c;
             border-radius: 4px;
             color: #fff;
             padding: 8px;
@@ -196,9 +218,9 @@
         }
 
         #chat-submit {
-            background: #4caf50;
+            background: #3fa143;
             color: white;
-            border: 3px solid #2e7d32;
+            border: 3px solid #1f5e22;
             padding: 0 15px;
             cursor: pointer;
             font-weight: bold;
@@ -210,6 +232,7 @@
 
     <div id="game-console">
         <div id="game-screen">
+            <!-- 状态面板 -->
             <div id="status-bars">
                 <div class="bar-container">
                     <span class="bar-label">🐟 饱食</span>
@@ -225,43 +248,78 @@
                 </div>
             </div>
 
+            <!-- 重新手绘：高级 16-bit 像素风格猫咪 & 猫窝 -->
             <div id="sprite-container">
-                <!-- 16-bit SVG 精灵图（绿眼睛、白嘴唇、橘色窝） -->
                 <svg class="cat-sprite" viewBox="0 0 100 100">
-                    <ellipse cx="50" cy="85" rx="42" ry="12" fill="#d35400" stroke="#8e44ad" stroke-width="2" />
-                    <ellipse cx="50" cy="82" rx="38" ry="10" fill="#e67e22" />
-                    <ellipse cx="50" cy="58" rx="26" ry="24" fill="#a0522d" stroke="#3e2723" stroke-width="2" />
-                    <path d="M28 50 Q38 52 40 54" stroke="#3e2723" stroke-width="2" fill="none" />
-                    <path d="M72 50 Q62 52 60 54" stroke="#3e2723" stroke-width="2" fill="none" />
-                    <path d="M26 60 Q36 60 38 62" stroke="#3e2723" stroke-width="2" fill="none" />
-                    <path d="M74 60 Q64 60 62 62" stroke="#3e2723" stroke-width="2" fill="none" />
-                    <circle cx="50" cy="38" r="20" fill="#a0522d" stroke="#3e2723" stroke-width="2" />
-                    <path d="M33 34 Q40 36 41 37" stroke="#3e2723" stroke-width="1.5" fill="none" />
-                    <path d="M67 34 Q60 36 59 37" stroke="#3e2723" stroke-width="1.5" fill="none" />
-                    <polygon points="32,24 42,12 44,24" fill="#8b5a2b" stroke="#3e2723" stroke-width="2" />
-                    <polygon points="68,24 58,12 56,24" fill="#8b5a2b" stroke="#3e2723" stroke-width="2" />
-                    <circle cx="42" cy="34" r="3.5" fill="#2ecc71" stroke="#27ae60" stroke-width="1" />
-                    <circle cx="42" cy="34" r="1" fill="#fff" />
-                    <circle cx="58" cy="34" r="3.5" fill="#2ecc71" stroke="#27ae60" stroke-width="1" />
-                    <circle cx="58" cy="34" r="1" fill="#fff" />
-                    <ellipse cx="46" cy="42" rx="4.5" ry="3.5" fill="#ffffff" />
-                    <ellipse cx="54" cy="42" rx="4.5" ry="3.5" fill="#ffffff" />
-                    <ellipse cx="50" cy="44" rx="4" ry="2.5" fill="#ffffff" />
-                    <polygon points="49,40 51,40 50,42" fill="#ffb6c1" />
-                    <path d="M47 43 Q50 45 53 43" stroke="#3e2723" stroke-width="1" fill="none" />
-                    <circle cx="44" cy="78" r="5" fill="#a0522d" stroke="#3e2723" stroke-width="1.5" />
-                    <circle cx="56" cy="78" r="5" fill="#f5f5f5" stroke="#3e2723" stroke-width="1.5" />
+                    <!-- 1. 蓬松的 3D 渐变色橘色甜甜圈猫窝 -->
+                    <ellipse cx="50" cy="85" rx="44" ry="13" fill="#8e2f00" />
+                    <ellipse cx="50" cy="82" rx="42" ry="12" fill="#d35400" />
+                    <ellipse cx="50" cy="80" rx="38" ry="10" fill="#e67e22" />
+                    <ellipse cx="50" cy="78" rx="30" ry="7" fill="#f39c12" />
+                    
+                    <!-- 2. 胖乎乎的狸花猫身体（增加了暗部阴影） -->
+                    <ellipse cx="50" cy="56" rx="25" ry="22" fill="#8a4d29" />
+                    <ellipse cx="50" cy="54" rx="23" ry="20" fill="#a0522d" />
+                    
+                    <!-- 身体上的虎斑条纹（更精致的像素排列） -->
+                    <path d="M28 46 Q36 49 39 51" stroke="#3e2723" stroke-width="2.5" fill="none" />
+                    <path d="M72 46 Q64 49 61 51" stroke="#3e2723" stroke-width="2.5" fill="none" />
+                    <path d="M27 56 Q36 57 38 59" stroke="#3e2723" stroke-width="2.5" fill="none" />
+                    <path d="M73 56 Q64 57 62 59" stroke="#3e2723" stroke-width="2.5" fill="none" />
+
+                    <!-- 3. 大宽脸蛋和头部 -->
+                    <circle cx="50" cy="35" r="19" fill="#8a4d29" />
+                    <circle cx="50" cy="33" r="18" fill="#a0522d" />
+                    
+                    <!-- 脸颊两侧的狸花胡须纹路 -->
+                    <path d="M33 30 Q39 31 41 32" stroke="#3e2723" stroke-width="2" fill="none" />
+                    <path d="M67 30 Q61 31 59 32" stroke="#3e2723" stroke-width="2" fill="none" />
+
+                    <!-- 4. 可爱的猫耳朵（带粉色内耳） -->
+                    <polygon points="31,22 41,8 43,21" fill="#3e2723" />
+                    <polygon points="33,21 39,11 41,20" fill="#fbb" />
+                    <polygon points="69,22 59,8 57,21" fill="#3e2723" />
+                    <polygon points="67,21 61,11 59,20" fill="#fbb" />
+                    
+                    <!-- 5. 亮晶晶的绿宝石大眼睛（双重像素高光，萌度大增） -->
+                    <circle cx="41" cy="29" r="4" fill="#2ecc71" />
+                    <circle cx="41" cy="29" r="2.5" fill="#27ae60" />
+                    <circle cx="40" cy="28" r="1" fill="#fff" /> <!-- 主高光 -->
+                    <circle cx="42" cy="30" r="0.5" fill="#fff" /> <!-- 辅高光 -->
+
+                    <circle cx="59" cy="29" r="4" fill="#2ecc71" />
+                    <circle cx="59" cy="29" r="2.5" fill="#27ae60" />
+                    <circle cx="58" cy="28" r="1" fill="#fff" />
+                    <circle cx="60" cy="30" r="0.5" fill="#fff" />
+
+                    <!-- 6. 标志性的雪白嘴唇和下巴 (Muzzle) -->
+                    <ellipse cx="45" cy="37" rx="4.5" ry="3.5" fill="#ffffff" />
+                    <ellipse cx="55" cy="37" rx="4.5" ry="3.5" fill="#ffffff" />
+                    <ellipse cx="50" cy="39" rx="5" ry="3.5" fill="#ffffff" />
+                    <!-- 小粉鼻 -->
+                    <polygon points="48,35 52,35 50,37" fill="#ffb6c1" />
+                    <!-- 喵咪小猫嘴 -->
+                    <path d="M46 38.5 Q50 41 54 38.5" stroke="#3e2723" stroke-width="1.2" fill="none" />
+
+                    <!-- 7. 萌萌的前爪（一只穿了可爱的白色手套） -->
+                    <circle cx="43" cy="74" r="5" fill="#8a4d29" />
+                    <circle cx="43" cy="73" r="4.5" fill="#a0522d" />
+                    
+                    <circle cx="57" cy="74" r="5" fill="#dcdde1" /> <!-- 白手套部分 -->
+                    <circle cx="57" cy="73" r="4.5" fill="#ffffff" />
                 </svg>
             </div>
         </div>
 
+        <!-- 对话框 -->
         <div id="dialogue-box">
             <div>
                 <div id="speaker">咻咻猫</div>
-                <div id="text-content">咻！你来啦！[在橘色猫窝里摇尾巴] 抱抱咻咻好不好？（提示：在 index.html 代码中填入密钥后，咻咻就能彻底变聪明啦！）</div>
+                <div id="text-content">咻！你来啦！[在橘色猫窝里摇尾巴] 抱抱咻咻好不好？（提示：请确认代码中第 13 行为你真实的 Key 哟！）</div>
             </div>
         </div>
 
+        <!-- 按键 -->
         <div id="buttons-panel">
             <button class="pixel-btn" onclick="interact('feed')">🐟 喂鱼干</button>
             <button class="pixel-btn" onclick="interact('pet')">✋ 摸摸头</button>
@@ -269,6 +327,7 @@
             <button class="pixel-btn" id="btn-poke" onclick="interact('poke')">👉 戳一戳</button>
         </div>
 
+        <!-- 聊天 -->
         <div id="chat-input-area">
             <input type="text" id="chat-input" placeholder="和咻咻猫说点什么..." onkeydown="if(event.key === 'Enter') submitChat()">
             <button id="chat-submit" onclick="submitChat()">发送</button>
@@ -277,10 +336,10 @@
 
     <script>
         // ==========================================
-        // ⚙️ 在这里直接内置你的大模型配置（请不要泄露给他人）
+        // ⚙️ 在这里直接内置你的大模型配置
         // ==========================================
         const CONFIG = {
-            apiKey: "sk-7ab387a1cb474f6db6976ea3a8aef8f5", // 👈 替换这行双引号里的文字即可
+            apiKey: "在这里填入你的_DEEPSEEK_API_KEY", // 👈 替换这行双引号里的文字即可
             apiUrl: "https://api.deepseek.com/v1", 
             apiModel: "deepseek-chat" 
         };
@@ -293,10 +352,14 @@
             ignoreCount: 0      
         };
 
+        window.onload = function() {
+            const settingsBtn = document.getElementById('settings-btn');
+            if (settingsBtn) settingsBtn.style.display = 'none'; 
+        };
+
         // 调用大模型对话接口
         async function fetchAIResponse(userMessage) {
-            // 如果你没有填入密钥，使用本地简易对话
-            if (!CONFIG.apiKey || CONFIG.apiKey.includes("在这里填入")) {
+            if (!CONFIG.apiKey || CONFIG.apiKey.includes("sk-7ab387a1cb474f6db6976ea3a8aef8f5")) {
                 return localFallbackChat(userMessage);
             }
 
@@ -334,12 +397,17 @@
                     })
                 });
 
-                if (!response.ok) throw new Error("API返回错误");
+                if (!response.ok) {
+                    // 如果返回了非200的状态码，直接抛出，让捕获块打印具体代码
+                    const errText = await response.text();
+                    throw new Error(`[HTTP ${response.status}] - ${errText || '未知错误'}`);
+                }
                 const data = await response.json();
                 return data.choices[0].message.content;
             } catch (err) {
                 console.error(err);
-                return "咻呜……刚才信号开小差了，脑电波没接上。（大模型连接失败，请检查内置的 Key 是否有效）";
+                // 把真实的报错原因打印在屏幕上，以便定位为什么 API 连不上
+                return `咻呜……刚才信号开小差了，脑电波没接上。\n【报错原因】：${err.message}`;
             }
         }
 
