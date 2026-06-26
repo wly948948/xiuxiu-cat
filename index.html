@@ -436,7 +436,7 @@
         // ==========================================
         // ⚙️ 接口配置
         // ==========================================
-      const CONFIG = {
+       const CONFIG = {
        apiKey: "sk-ephvdecvurhviermvzutqqegqessydmogyjjhlgzghzdxvwz", 
        apiUrl: "https://api.siliconflow.cn/v1", 
        apiModel: "Qwen/Qwen2.5-7B-Instruct" //    
@@ -446,7 +446,7 @@
         // 🧠 记忆读取存档函数
         function loadSavedState() {
             try {
-                const saved = localStorage.getItem('xiuxiu_pet_state_v6');
+                const saved = localStorage.getItem('xiuxiu_pet_state_v7');
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     return {
@@ -456,7 +456,7 @@
                         ignoreCount: parsed.ignoreCount !== undefined ? parsed.ignoreCount : 0,
                         isProcessing: false,
                         chatHistory: parsed.chatHistory || [],
-                        lastUserEmotion: parsed.lastUserEmotion || 'normal' // 🧠 双子系统：记录上一次用户情绪分类 ('normal' | 'negative')
+                        lastUserEmotion: parsed.lastUserEmotion || 'normal' // 🧠 记录上一次用户情绪分类 ('normal' | 'negative')
                     };
                 }
             } catch (e) {
@@ -487,7 +487,7 @@
                     chatHistory: state.chatHistory,
                     lastUserEmotion: state.lastUserEmotion
                 };
-                localStorage.setItem('xiuxiu_pet_state_v6', JSON.stringify(toSave));
+                localStorage.setItem('xiuxiu_pet_state_v7', JSON.stringify(toSave));
             } catch (e) {
                 console.error("存档写入失败:", e);
             }
@@ -673,7 +673,7 @@
                 stateDescription += `\n- 【特殊生理状态：极度饥饿（饱食度：${state.hunger}/100 < 30）】。无论好感度多高，饥饿都会让你变得很暴躁，肚子咕咕叫，频繁催促小王喂你鱼干。`;
             }
 
-            // 🧠 核心：双子系统感知，如果主人处于消极态度，要求大模型必须极度温柔，主动关心！
+            // 🧠 如果主人处于消极态度，开启【情绪敏感模式】
             if (state.lastUserEmotion === 'negative') {
                 stateDescription += `\n- ⚠️【紧急心境状态：小王目前心情极度低落/烦躁/委屈/劳累】！你对他有一种与生俱来的、长达十年的极强情感共鸣。在这里，你必须瞬间放下面子和所有冷漠！你的语气要变得十分心疼、温柔。虽然还要嘴硬说几句‘哼，本喵才不是担心你呢’，但必须主动深度追问他发生了什么委屈的事。通过小心翼翼的蹭蹭、贴贴和呼噜声给予他安全感。`;
             }
@@ -879,7 +879,7 @@
                             const container = document.getElementById('sprite-container');
                             if (container) container.classList.remove('tsundere-ignore');
                         } else {
-                            reply = `不要乱戳！[咻咻猫耸了耸毛，不肯转过来，看样子还要戳 ${state.ignoreCount} 次]`;
+                            reply = `不要乱戳！[咻咻猫耷拉着耳朵，仍旧用巧克力色背部对着你]\n（💡提示：如果还没好就再戳一下，看样子还要戳 ${state.ignoreCount} 次哦！）`;
                             emoji = "💢";
                         }
                     } else {
@@ -925,7 +925,7 @@
                     if (container) container.classList.add('tsundere-ignore');
                     
                     setTimeout(() => {
-                        updateUI("哼！[咻咻猫傲娇地转过身去，背对你端坐在粉色地板上] 咻咻决定不理你了，除非小王你戳它道歉！", "💢");
+                        updateUI("哼！[咻咻猫傲娇地转过身去，背对你端坐在粉色地板上] 咻咻决定不理你了！\n（💡提示：小猫生气的时候很好哄哦，点击【👉 戳一戳】逗逗它就好啦！）", "💢");
                         resolve();
                     }, 500);
                 } else {
@@ -950,7 +950,7 @@
                                        cleanKey.length < 15 || 
                                        cleanKey.includes("API_KEY");
 
-            // 🧠 情绪分析：捕捉用户是否流露消极低落情绪（累/烦/哭/失败/委屈/绝望等）
+            // 🧠 情绪分析：捕捉用户是否流露消极低落情绪
             const isNegative = /(累|烦|难过|哭|不开心|伤心|失败|委屈|倒霉|绝望|压力|无用|傻|笨|疼|割破|流血|受伤)/i.test(text);
             state.lastUserEmotion = isNegative ? 'negative' : 'normal';
 
@@ -964,9 +964,6 @@
                     state.ignoreCount = 0;
                     const container = document.getElementById('sprite-container');
                     if (container) container.classList.remove('tsundere-ignore');
-                    // 此处不 return，直接放行，让猫咪进行联网深度安抚！
-                } else {
-                    // 正常无视聊天不拦截：交由 localFallbackChat 或 AI 处理冷战对白
                 }
             }
 
