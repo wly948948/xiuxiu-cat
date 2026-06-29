@@ -1,477 +1,49 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>咻咻猫的 16-bit 智能猫窝</title>
-    <style>
-        /* 全局复古游戏机风格 */
-        body {
-            background-color: #2c211a;
-            font-family: "Courier New", Courier, monospace, "Microsoft YaHei";
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            color: #fff;
-        }
-
-        #game-console {
-            width: 420px;
-            background: #ab825f; 
-            border: 6px solid #4e3522;
-            border-radius: 16px;
-            box-shadow: 0 12px 0 #2c1c11, 0 20px 30px rgba(0,0,0,0.6);
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            position: relative;
-        }
-
-        /* 浅粉色纯色渐变背景 */
-        #game-screen {
-            background: linear-gradient(to bottom, #ffe4eb, #fbc4d0); 
-            border: 6px solid #4e3522;
-            border-radius: 8px;
-            height: 280px;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow: inset 0 0 20px rgba(188,120,135,0.4);
-        }
-
-        /* CRT 显像管扫描线效果 */
-        #game-screen::before {
-            content: " ";
-            display: block;
-            position: absolute;
-            top: 0; left: 0; bottom: 0; right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.08) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
-            z-index: 5;
-            background-size: 100% 4px, 4px 100%;
-            pointer-events: none;
-        }
-
-        /* 状态面板 */
-        #status-bars {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            z-index: 10;
-        }
-
-        .bar-container {
-            display: flex;
-            align-items: center;
-            font-size: 12px;
-            font-weight: bold;
-            color: #fff;
-            text-shadow: 1px 1px 0px #4e3522, -1px -1px 0px #4e3522, 1px -1px 0px #4e3522, -1px 1px 0px #4e3522;
-        }
-
-        .bar-label {
-            display: flex;
-            align-items: center;
-            gap: 6px;                
-            white-space: nowrap;     
-            min-width: 65px;         
-            margin-right: 5px;       
-        }
-        
-        .pixel-bar-bg {
-            width: 90px;
-            height: 14px;
-            background: #e9ced5;
-            border: 3px solid #4e3522;
-        }
-
-        .pixel-bar-fill {
-            height: 100%;
-            width: 60%;
-            transition: width 0.3s, background-color 0.5s;
-        }
-
-        /* 精灵图容器 */
-        #sprite-container {
-            position: absolute;
-            bottom: 10px;
-            width: 220px;
-            height: 220px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        #sprite-container.tsundere-ignore {
-            transform: scaleX(-1);
-        }
-
-        /* ------------------------------------------
-           🎬 四种情绪姿态的 16-bit 像素动画系统 
-           ------------------------------------------ */
-        
-        /* 1. 默认正常状态：3.5秒平缓呼吸 */
-        #sprite-container.state-normal svg.cat-sprite {
-            animation: breathe-normal 3.5s infinite ease-in-out;
-            shape-rendering: crispEdges;
-        }
-        @keyframes breathe-normal {
-            0%, 100% { transform: scale(1) translateY(0); }
-            50% { transform: scale(1.03, 0.97) translateY(2px); }
-        }
-
-        /* 2. 犯困状态：5秒超慢呼吸 */
-        #sprite-container.state-sleepy svg.cat-sprite {
-            animation: breathe-sleepy 5s infinite ease-in-out;
-            shape-rendering: crispEdges;
-        }
-        @keyframes breathe-sleepy {
-            0%, 100% { transform: scale(1) translateY(0); }
-            50% { transform: scale(1.01, 0.99) translateY(1px); }
-        }
-
-        /* 3. 生气暴躁状态：1.5秒急促呼吸 + 震颤摇晃 */
-        #sprite-container.state-angry svg.cat-sprite {
-            animation: breathe-angry 1.5s infinite ease-in-out, shake-angry 0.15s infinite alternate;
-            shape-rendering: crispEdges;
-        }
-        @keyframes breathe-angry {
-            0%, 100% { transform: scale(1) translateY(0); }
-            50% { transform: scale(1.04, 0.96) translateY(2px); }
-        }
-        @keyframes shake-angry {
-            0% { transform: translate(-1px, 0) rotate(-0.5deg); }
-            100% { transform: translate(1px, 0) rotate(0.5deg); }
-        }
-
-        /* 4. 开心状态：2秒雀跃起伏 + 上下弹跳 */
-        #sprite-container.state-happy svg.cat-sprite {
-            animation: breathe-happy 2s infinite ease-in-out, bounce-happy 1s infinite alternate;
-            shape-rendering: crispEdges;
-        }
-        @keyframes breathe-happy {
-            0%, 100% { transform: scale(1) translateY(0); }
-            50% { transform: scale(1.05, 0.95) translateY(1px); }
-        }
-        @keyframes bounce-happy {
-            0% { transform: translateY(0); }
-            100% { transform: translateY(-4px); } 
-        }
-
-        /* 强制重置所有表情图层 */
-        .eye-sleepy, .eye-angry, .eyebrow-angry, .eye-happy, 
-        .ear-sleepy, .ear-angry, .blush-happy {
-            display: none !important;
-        }
-
-        /* 各表情状态显示 */
-        #sprite-container.state-sleepy .eye-sleepy,
-        #sprite-container.state-sleepy .ear-sleepy { display: inline !important; }
-        #sprite-container.state-sleepy .eye-open,
-        #sprite-container.state-sleepy .eye-open-pupil,
-        #sprite-container.state-sleepy .ear-normal { display: none !important; }
-
-        #sprite-container.state-angry .eye-angry,
-        #sprite-container.state-angry .eyebrow-angry,
-        #sprite-container.state-angry .ear-angry { display: inline !important; }
-        #sprite-container.state-angry .eye-open,
-        #sprite-container.state-angry .eye-open-pupil,
-        #sprite-container.state-angry .ear-normal { display: none !important; }
-
-        #sprite-container.state-happy .eye-happy,
-        #sprite-container.state-happy .blush-happy { display: inline !important; }
-        #sprite-container.state-happy .eye-open,
-        #sprite-container.state-happy .eye-open-pupil { display: none !important; }
-
-
-        /* 优化后的对话框布局 */
-        #dialogue-box {
-            background: #1a1512;
-            border: 4px solid #fff;
-            outline: 2px solid #1a1512;
-            border-radius: 4px;
-            height: 110px;
-            padding: 8px 12px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
-        #speaker {
-            font-size: 11px;
-            color: #ff99bb; 
-            font-weight: bold;
-            letter-spacing: 1px;
-            flex-shrink: 0;
-        }
-
-        /* 自适应像素滚动对话栏 */
-        #text-content {
-            font-size: 13px;
-            line-height: 1.4;
-            color: #ffd1dc; 
-            overflow-y: auto; 
-            flex-grow: 1;
-        }
-
-        /* 🎨 16-bit 专属复古风滚动条 */
-        #text-content::-webkit-scrollbar {
-            width: 6px;
-        }
-        #text-content::-webkit-scrollbar-track {
-            background: #1a1512;
-        }
-        #text-content::-webkit-scrollbar-thumb {
-            background: #ab825f;
-            border: 1px solid #4e3522;
-            border-radius: 2px;
-        }
-
-        /* 👑 16-bit 物理重力下落粒子动画 */
-        .drop-particle {
-            position: absolute;
-            font-size: 22px;
-            pointer-events: none;
-            z-index: 100;
-            animation: fallDown 1.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-        }
-
-        @keyframes fallDown {
-            0% {
-                transform: translateY(-40px) rotate(0deg) scale(0.6);
-                opacity: 0;
-            }
-            15% {
-                opacity: 1;
-                transform: translateY(10px) rotate(45deg) scale(1.1);
-            }
-            85% {
-                opacity: 1;
-            }
-            100% {
-                transform: translateY(220px) rotate(360deg) scale(0.8);
-                opacity: 0;
-            }
-        }
-
-        #buttons-panel {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 6px;
-        }
-
-        .pixel-btn {
-            background: #e29bb2; 
-            border: 3px solid #4e3522;
-            border-radius: 4px;
-            color: #3b1d27;
-            font-size: 11px;
-            font-weight: bold;
-            padding: 10px 0;
-            cursor: pointer;
-            box-shadow: inset -2px -2px 0px #b06e83, 2px 2px 0px #4e3522;
-            outline: none;
-        }
-
-        .pixel-btn:active:not(:disabled) {
-            box-shadow: inset 2px 2px 0px #b06e83;
-            transform: translate(1px, 1px);
-        }
-
-        /* 禁用时的像素置灰样式 */
-        .pixel-btn:disabled {
-            background: #a0828c !important;
-            border-color: #5a4b40 !important;
-            color: #605058 !important;
-            box-shadow: none !important;
-            cursor: not-allowed;
-            transform: none !important;
-        }
-
-        #btn-poke {
-            background: #84bbf0;
-            border-color: #2b4562;
-            box-shadow: inset -2px -2px 0px #508cb5, 2px 2px 0px #2b4562;
-            color: #fff;
-        }
-
-        #chat-input-area {
-            display: flex;
-            gap: 6px;
-        }
-
-        #chat-input {
-            flex: 1;
-            background: #1a1512;
-            border: 3px solid #4e3522;
-            border-radius: 4px;
-            color: #fff;
-            padding: 8px;
-            font-size: 12px;
-            outline: none;
-        }
-
-        #chat-submit {
-            background: #e8517b;
-            color: white;
-            border: 3px solid #a62a4d;
-            padding: 0 15px;
-            cursor: pointer;
-            font-weight: bold;
-            border-radius: 4px;
-        }
-    </style>
-</head>
-<body>
-
-    <div id="game-console">
-        <div id="game-screen">
-            <!-- 状态面板 -->
-            <div id="status-bars">
-                <div class="bar-container">
-                    <span class="bar-label">🐟 饱食</span>
-                    <div class="pixel-bar-bg">
-                        <div id="hunger-bar" class="pixel-bar-fill" style="width: 60%; background-color: #ff5e7e;"></div>
-                    </div>
-                </div>
-                <div class="bar-container">
-                    <span class="bar-label">❤️ 好感</span>
-                    <div class="pixel-bar-bg">
-                        <div id="affection-bar" class="pixel-bar-fill" style="width: 60%; background-color: #ff2a85;"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SVG 猫咪 -->
-            <div id="sprite-container" class="state-normal">
-                <svg class="cat-sprite" viewBox="0 0 48 48">
-                    <!-- 1. 尾巴 -->
-                    <rect x="29" y="24" width="10" height="15" fill="#150b09" />
-                    <rect x="30" y="25" width="8" height="13" fill="#35221e" />
-                    <rect x="30" y="29" width="3" height="4" fill="#f2cab3" />
-                    <rect x="33" y="27" width="4" height="3" fill="#35221e" />
-                    <rect x="34" y="32" width="3" height="3" fill="#f2cab3" />
-
-                    <!-- 2. 耳朵图层 -->
-                    <!-- 正常耳 -->
-                    <path class="ear-normal" d="M9 14 L15 6 L18 14 Z" fill="#150b09" />
-                    <path class="ear-normal" d="M10 13 L14 7 L16 13 Z" fill="#35221e" />
-                    <path class="ear-normal" d="M11 13 L13 9 L14 13 Z" fill="#ea8585" />
-                    <path class="ear-normal" d="M22 14 L25 6 L31 14 Z" fill="#150b09" />
-                    <path class="ear-normal" d="M23 13 L26 7 L29 13 Z" fill="#35221e" />
-                    <path class="ear-normal" d="M25 13 L27 9 L28 13 Z" fill="#ea8585" />
-                    <!-- 生气飞机耳 -->
-                    <path class="ear-angry" d="M7 16 L14 11 L16 17 Z" fill="#150b09" />
-                    <path class="ear-angry" d="M8 15 L13 12 L14 16 Z" fill="#35221e" />
-                    <path class="ear-angry" d="M9 15 L12 13 L13 15 Z" fill="#ea8585" />
-                    <path class="ear-angry" d="M33 16 L26 11 L24 17 Z" fill="#150b09" />
-                    <path class="ear-angry" d="M32 15 L27 12 L26 16 Z" fill="#35221e" />
-                    <path class="ear-angry" d="M31 15 L28 13 L27 15 Z" fill="#ea8585" />
-                    <!-- 犯困耷拉耳 -->
-                    <path class="ear-sleepy" d="M9 14 L12 10 L15 14 Z" fill="#150b09" />
-                    <path class="ear-sleepy" d="M10 13 L12 11 L14 13 Z" fill="#35221e" />
-                    <path class="ear-sleepy" d="M25 14 L28 10 L31 14 Z" fill="#150b09" />
-                    <path class="ear-sleepy" d="M26 13 L28 11 L30 13 Z" fill="#35221e" />
-
-                    <!-- 4. 脑袋与脸颊 -->
-                    <rect x="8" y="13" width="24" height="15" fill="#150b09" />
-                    <rect x="9" y="14" width="22" height="13" fill="#35221e" />
-                    <rect x="21" y="15" width="1" height="1" fill="#ffffff" />
-                    <rect x="6" y="19" width="3" height="4" fill="#150b09" />
-                    <rect x="7" y="20" width="2" height="2" fill="#35221e" />
-                    <rect x="31" y="19" width="3" height="4" fill="#150b09" />
-                    <rect x="31" y="20" width="2" height="2" fill="#35221e" />
-
-                    <!-- 5. 纯白面具与胸前围脖 -->
-                    <path d="M12 21 H28 V27 H12 Z" fill="#ffffff" /> 
-                    <path d="M15 19 H25 V21 H15 Z" fill="#ffffff" /> 
-                    <path d="M9 27 H31 V31 H9 Z" fill="#ffffff" /> 
-                    <path d="M11 27 H29 V29 H11 Z" fill="#f2cab3" /> 
-                    <path d="M13 29 H27 V37 H13 Z" fill="#ffffff" /> 
-
-                    <!-- 6. 眼睛与五官图层 -->
-                    <!-- 正常大圆眼 -->
-                    <rect class="eye-open" x="14" y="18" width="4" height="4" fill="#150b09" />
-                    <rect class="eye-open-pupil" x="15" y="19" width="2" height="2" fill="#ffffff" /> 
-                    <rect class="eye-open" x="22" y="18" width="4" height="4" fill="#150b09" />
-                    <rect class="eye-open-pupil" x="23" y="19" width="2" height="2" fill="#ffffff" />
-                    <!-- 犯困眯眯眼 -->
-                    <rect class="eye-sleepy" x="13" y="19" width="5" height="1" fill="#150b09" />
-                    <rect class="eye-sleepy" x="22" y="19" width="5" height="1" fill="#150b09" />
-                    <!-- 生气吊角眼 -->
-                    <rect class="eye-angry" x="14" y="19" width="4" height="3" fill="#150b09" />
-                    <rect class="eye-angry" x="22" y="19" width="4" height="3" fill="#150b09" />
-                    <path class="eyebrow-angry" d="M13 17 L18 20 M27 17 L22 20" stroke="#150b09" stroke-width="1.2" />
-                    <!-- 撒娇弯弯笑眼 -->
-                    <path class="eye-happy" d="M14 20 Q16 17 18 20 M22 20 Q24 17 26 20" stroke="#150b09" stroke-width="1.5" fill="none" />
-
-                    <!-- 鼻子和嘴 -->
-                    <rect x="27" y="17" width="2" height="2" fill="#f2cab3" />
-                    <rect x="19" y="21" width="2" height="1" fill="#150b09" />
-                    <path d="M18 23 Q20 25 22 23" stroke="#150b09" stroke-width="1.2" fill="none" />
-
-                    <!-- 腮红图层 -->
-                    <rect class="blush-normal" x="10" y="22" width="2" height="1" fill="#ffc0cb" />
-                    <rect class="blush-normal" x="28" y="22" width="2" height="1" fill="#ffc0cb" />
-                    <!-- 撒娇特大腮红 -->
-                    <rect class="blush-happy" x="10" y="21" width="3" height="2" fill="#ea8585" />
-                    <rect class="blush-happy" x="27" y="21" width="3" height="2" fill="#ea8585" />
-
-                    <!-- 7. 身体与爪子 -->
-                    <rect x="9" y="27" width="22" height="13" fill="#150b09" />
-                    <rect x="10" y="28" width="20" height="11" fill="#35221e" />
-                    <rect x="26" y="33" width="1" height="1" fill="#ea8585" />
-                    <rect x="14" y="37" width="4" height="3" fill="#150b09" />
-                    <rect x="15" y="37" width="2" height="2" fill="#ffffff" /> 
-                    <rect x="22" y="37" width="4" height="3" fill="#150b09" />
-                    <rect x="23" y="37" width="2" height="2" fill="#ffffff" />
-                </svg>
-            </div>
-        </div>
-
-        <div id="dialogue-box">
-            <div id="speaker">咻咻猫</div>
-            <!-- 👑 HTML 物理防死锁兜底台词 -->
-            <div id="text-content">咻呜！小王你终于舍得开机了？[从粉色地板上慢吞吞地爬起来，伸了个懒腰] 本喵等得胡子都歪了！</div>
-        </div>
-
-        <div id="buttons-panel">
-            <button class="pixel-btn" id="btn-feed" onclick="interact('feed')">🐟 喂鱼干</button>
-            <button class="pixel-btn" id="btn-pet" onclick="interact('pet')">✋ 摸摸头</button>
-            <button class="pixel-btn" id="btn-play" onclick="interact('play')">🌿 逗猫棒</button>
-            <button class="pixel-btn" id="btn-poke" onclick="interact('poke')">👉 戳一戳</button>
-        </div>
-
-        <div id="chat-input-area">
-            <input type="text" id="chat-input" placeholder="和咻咻猫说点什么..." onkeydown="if(event.key === 'Enter' || event.keyCode === 13) submitChat()">
-            <button id="chat-submit" onclick="submitChat()">发送</button>
-        </div>
-    </div>
-
-    <script>
+<script>
         // ==========================================
-        // ⚙️ 接口配置（若需免费，极力推荐换成 硅基流动：https://siliconflow.cn）
+        // ⚙️ 接口配置（安全优化：优先从本地浏览器存储读取 Key，防止 GitHub 泄露）
         // ==========================================
         const CONFIG = {
-       apiKey: "sk-ephvdecvurhviermvzutqqegqessydmogyjjhlgzghzdxvwz", 
-       apiUrl: "https://api.siliconflow.cn/v1", 
-       apiModel: "Qwen/Qwen2.5-7B-Instruct" //     
-           };
+            apiKey: localStorage.getItem('sk-ephvdecvurhviermvzutqqegqessydmogyjjhlgzghzdxvwz') || "", 
+            apiUrl: "https://api.siliconflow.cn/v1", 
+            apiModel: "Qwen/Qwen2.5-7B-Instruct"     
+        };
         // ==========================================
 
-        // 🧠 记忆读取存档函数
+        // ==========================================
+        // 💾 长期记忆管理器 (MemoryManager) - 满足需求 2
+        // ==========================================
+        const MemoryManager = {
+            getMemory() {
+                try {
+                    return JSON.parse(localStorage.getItem('xiuxiu_longterm_memory') || '[]');
+                } catch(e) {
+                    return [];
+                }
+            },
+            saveMemory(memories) {
+                localStorage.setItem('xiuxiu_longterm_memory', JSON.stringify(memories));
+            },
+            addMemory(fact) {
+                let memories = this.getMemory();
+                // 过滤重复记忆
+                if (!memories.some(m => m.toLowerCase() === fact.toLowerCase())) {
+                    memories.push(fact);
+                    // 长期记忆最多保持 8 条核心记录
+                    if (memories.length > 8) memories.shift();
+                    this.saveMemory(memories);
+                }
+            },
+            getMemoryPrompt() {
+                const memories = this.getMemory();
+                if (memories.length === 0) return "暂无关于主人的特别记录。";
+                return memories.map((m, idx) => `- ${m}`).join('\n');
+            }
+        };
+
+        // 🧠 记忆读取与游戏状态存档加载
         function loadSavedState() {
             try {
-                const saved = localStorage.getItem('xiuxiu_pet_state_v8');
+                const saved = localStorage.getItem('xiuxiu_pet_state_v9');
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     return {
@@ -481,7 +53,8 @@
                         ignoreCount: parsed.ignoreCount !== undefined ? parsed.ignoreCount : 0,
                         isProcessing: false,
                         chatHistory: parsed.chatHistory || [],
-                        lastUserEmotion: parsed.lastUserEmotion || 'normal' // 🧠 双子系统：记录上一次用户情绪分类 ('normal' | 'negative')
+                        summary: parsed.summary || "", // 自动生成的上下文摘要
+                        lastUserEmotion: parsed.lastUserEmotion || 'normal'
                     };
                 }
             } catch (e) {
@@ -494,6 +67,7 @@
                 ignoreCount: 0,
                 isProcessing: false,
                 chatHistory: [],
+                summary: "",
                 lastUserEmotion: 'normal'
             };
         }
@@ -510,11 +84,76 @@
                     isIgnoring: state.isIgnoring,
                     ignoreCount: state.ignoreCount,
                     chatHistory: state.chatHistory,
+                    summary: state.summary,
                     lastUserEmotion: state.lastUserEmotion
                 };
-                localStorage.setItem('xiuxiu_pet_state_v8', JSON.stringify(toSave));
+                localStorage.setItem('xiuxiu_pet_state_v9', JSON.stringify(toSave));
             } catch (e) {
                 console.error("存档写入失败:", e);
+            }
+        }
+
+        // 统一控制历史记录，保障轮次规范
+        function addChatHistory(role, content) {
+            state.chatHistory.push({ role: role, content: content });
+            
+            // 确保历史记录的第一条永远是 user 角色，防止大模型接口报错 400
+            while (state.chatHistory.length > 0 && state.chatHistory[0].role !== 'user') {
+                state.chatHistory.shift();
+            }
+        }
+
+        // ==========================================
+        // 💬 对话历史管理与自动摘要机制 - 满足需求 3
+        // ==========================================
+        async function summarizeOldHistory() {
+            // 当对话条数超过 10 条（5轮完整对话）时触发后台自动压缩
+            if (state.chatHistory.length <= 10) return;
+
+            const cleanKey = getStrictCleanKey();
+            if (!cleanKey) return;
+
+            // 截取最老的 4 条对话进行摘要，保留剩余的继续用作直接上下文
+            const toSummarize = state.chatHistory.slice(0, 4);
+            state.chatHistory = state.chatHistory.slice(4);
+
+            try {
+                const response = await fetch(`${CONFIG.apiUrl}/chat/completions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${cleanKey}`
+                    },
+                    body: JSON.stringify({
+                        model: CONFIG.apiModel,
+                        messages: [
+                            { role: "system", content: "请简要总结以下对话的内容，保留重要事件、约定、主人喜好或对话线索。控制在50字以内，直接输出总结内容。" },
+                            { role: "user", content: JSON.stringify(toSummarize) }
+                        ],
+                        max_tokens: 100,
+                        temperature: 0.3
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const newSummary = data.choices[0].message.content.trim();
+                    
+                    // 与已有的旧摘要合并
+                    if (state.summary) {
+                        state.summary = `（此前背景：${state.summary}。接着：${newSummary}）`;
+                    } else {
+                        state.summary = `（此前背景：${newSummary}）`;
+                    }
+                    saveCurrentState();
+                    console.log("📝 历史摘要更新成功:", state.summary);
+                } else {
+                    // 如果摘要失败，回滚历史，避免丢失上下文
+                    state.chatHistory = [...toSummarize, ...state.chatHistory];
+                }
+            } catch (e) {
+                console.error("生成对话摘要失败:", e);
+                state.chatHistory = [...toSummarize, ...state.chatHistory];
             }
         }
 
@@ -534,17 +173,37 @@
                 if (state.chatHistory && state.chatHistory.length > 0) {
                     const lastTurn = state.chatHistory[state.chatHistory.length - 1];
                     if (lastTurn && lastTurn.role === "assistant") {
-                        textContent.innerText = `[接上回] ${lastTurn.content}`;
+                        displayTextWithEffect(`[接上回] ${lastTurn.content}`);
                         updateVisualState();
                         return;
                     }
                 }
                 const randomIndex = Math.floor(Math.random() * greetings.length);
-                textContent.innerText = greetings[randomIndex];
+                displayTextWithEffect(greetings[randomIndex]);
             }
             updateVisualState();
         }
-        wakeupXiuXiu();
+
+        // 🎬 16-bit 静态文本打字机渲染器（用于喂食/摸摸等非流式交互）
+        let typingTimer = null;
+        function displayTextWithEffect(text) {
+            const el = document.getElementById('text-content');
+            if (!el) return;
+            
+            if (typingTimer) clearTimeout(typingTimer);
+            el.innerText = "";
+            let i = 0;
+            
+            function type() {
+                if (i < text.length) {
+                    el.innerText += text.charAt(i);
+                    i++;
+                    el.scrollTop = el.scrollHeight;
+                    typingTimer = setTimeout(type, 30);
+                }
+            }
+            type();
+        }
 
         // 情绪动画控制引擎
         function setVisualState(stateName) {
@@ -554,7 +213,7 @@
             container.classList.add(`state-${stateName}`);
         }
 
-        // 智能状态机：自动检测身体情况决定外在情绪
+        // 智能状态机
         function updateVisualState() {
             if (state.hunger < 30 || state.isIgnoring) {
                 setVisualState('angry');
@@ -572,7 +231,7 @@
             setVisualState('normal');
         }
 
-        // 瞬时兴奋反应器：在完成喂食/玩耍/抚摸后，开启 16-bit 像素快乐弹跳
+        // 瞬时情绪激励
         let tempEmotionTimeout = null;
         function triggerTempVisualState(stateName, duration = 2500) {
             if (tempEmotionTimeout) clearTimeout(tempEmotionTimeout);
@@ -582,36 +241,32 @@
             }, duration);
         }
 
-        // 👑 16-bit 像素粒子下落系统（实现鱼雨、爱心雨、星星雨和漫天飞舞的猫毛）
+        // 16-bit 像素粒子下落系统
         function createFallingParticles(emojiType) {
             const screen = document.getElementById('game-screen');
             if (!screen) return;
             
-            // 每次生成 6 枚随风飘舞旋转而落的精美像素粒子
             for (let i = 0; i < 6; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'drop-particle';
                 particle.innerText = emojiType;
                 
-                // 随机水平跨度
-                const randomX = Math.random() * 80 + 10; // 限制在 10% 到 90%
+                const randomX = Math.random() * 80 + 10;
                 particle.style.left = `${randomX}%`;
                 particle.style.top = `0px`; 
                 
-                // 增加随机微小延迟，制造落叶雨的自然错落感
                 const delay = Math.random() * 0.4;
                 particle.style.animationDelay = `${delay}s`;
                 
                 screen.appendChild(particle);
                 
-                // 播放完毕后自动在内存中卸载 DOM，防卡顿
                 setTimeout(() => {
                     particle.remove();
                 }, 1500);
             }
         }
 
-        // 获取时间
+        // 获取格式化时间
         function getCurrentDateTimeString() {
             const now = new Date();
             const year = now.getFullYear();
@@ -633,13 +288,13 @@
             return `${year}年${month}月${date}日 ${dayOfWeek} ${timePeriod} ${hours}:${minutes}`;
         }
 
-        // 安全清理 Key
+        // 安全获取 API Key
         function getStrictCleanKey() {
             if (!CONFIG || typeof CONFIG.apiKey !== 'string') return "";
             return CONFIG.apiKey.replace(/[^A-Za-z0-9\-_]/g, "").trim();
         }
 
-        // 统一控制组件状态
+        // 统一控制交互面板状态
         function setInteractiveState(enabled) {
             state.isProcessing = !enabled;
             
@@ -658,459 +313,22 @@
             }
         }
 
-        // 调用大模型
-        async function fetchAIResponse(userMessage) {
-            const cleanKey = getStrictCleanKey();
-
-            if (!cleanKey || cleanKey.length < 15 || cleanKey.includes("API_KEY")) {
-                return localFallbackChat(userMessage);
-            }
-
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 6000); 
-
-            // 构建带有历史记忆的 messages 负载
-            const messagesPayload = [
-                { role: "system", content: getSystemPrompt() },
-                ...state.chatHistory 
-            ];
-
-            try {
-                const response = await fetch(`${CONFIG.apiUrl}/chat/completions`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${cleanKey}`
-                    },
-                    body: JSON.stringify({
-                        model: CONFIG.apiModel,
-                        messages: messagesPayload,
-                        max_tokens: 150,
-                        temperature: 0.6 
-                    }),
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
-
-                if (!response.ok) {
-                    const errText = await response.text();
-                    throw new Error(`[HTTP ${response.status}] - ${errText}`);
-                }
-                const data = await response.json();
-                return data.choices[0].message.content;
-            } catch (err) {
-                clearTimeout(timeoutId);
-                console.error("API 报错:", err);
-                
-                if (err.name === 'AbortError') {
-                    return "[连接超时，咻咻自动切换回本地模式] 哼，半天没反应，咻咻不想等了！\n" + localFallbackChat(userMessage);
-                }
-                return `[脑电波暂时断开连接...] \n${localFallbackChat(userMessage)}`;
-            }
-        }
-
-        // 动态构建提示词：引入消极情感感知分支
-        function getSystemPrompt() {
-            const timeStr = getCurrentDateTimeString();
-            
-            let stateDescription = "";
-            if (state.affection < 30) {
-                stateDescription += `\n- 【当前情感：情感冰点（好感度：${state.affection}/100 < 30）】。你对小王极度冷漠、抗拒，坚决拒绝亲密，说话极其敷衍、冷冰冰，拒绝与他交流。`;
-            } else if (state.affection >= 30 && state.affection < 50) {
-                stateDescription += `\n- 【当前情感：傲娇防线（好感度：${state.affection}/100 在 30~50 之间）】。你性格极其傲娇（口嫌体正直），虽然依赖小王但嘴硬死不承认，说话别扭，经常数落他。`;
-            } else {
-                stateDescription += `\n- 【当前情感：极度粘人撒娇（好感度：${state.affection}/100 >= 50）】。你现在对小王卸下了所有防备，变得极其开朗、粘人、温柔又可爱！你会亲昵地用圆脸贴蹭他、甜软撒娇，整只猫甜度拉满，黏在他身边不肯走，尾巴欢快地摇摆。`;
-            }
-
-            if (state.hunger < 30) {
-                stateDescription += `\n- 【特殊生理状态：极度饥饿（饱食度：${state.hunger}/100 < 30）】。无论好感度多高，饥饿都会让你变得很暴躁，肚子咕咕叫，频繁催促小王喂你鱼干。`;
-            }
-
-            // 🧠 核心：双子系统感知，如果主人处于消极态度，要求大模型必须极度温柔，主动关心！
-            if (state.lastUserEmotion === 'negative') {
-                stateDescription += `\n- ⚠️【紧急心境状态：小王目前心情极度低落/烦躁/委屈/劳累】！你对他有一种与生俱来的、长达十年的极强情感共鸣。在这里，你必须瞬间放下面子和所有冷漠！你的语气要变得十分心疼、温柔。虽然还要嘴硬说几句‘哼，本喵才不是担心你呢’，但必须主动深度追问他发生了什么委屈的事。通过小心翼翼的蹭蹭、贴贴和呼噜声给予他安全感。`;
-            }
-
-            return `你是一只名叫“咻咻猫”的16位像素风电子宠物猫，今年10岁了，是主人“小王”养了十年的巧克力色老猫。
+        // ==========================================
+        // 🧩 Prompt 拆分与重组逻辑 - 满足需求 1 & 2
+        // ==========================================
+        const BASE_PROMPT = `你是一只名叫“咻咻猫”的16位像素风电子宠物猫，今年10岁了，是主人“小王”养了十年的巧克力色老猫。
         
         【设定规则】
         1. 语气：说话带“咻”或“咻呜”的尾音。根据当前的【好感度分级】决定你的亲密程度。
         2. 动作描述：把你的神态、小动作描写放在方括号 [] 里（例如：[亲昵地用巧克力色的脸颊蹭了蹭小王的手，高兴地咪起眼]）。
         3. 格式要求：直接输出台词，绝对不要输出前缀（如“咻咻猫:”、“用户:”等系统占位符）。
-        4. 字数长度：每次回答字数放宽至 **80字以内（大概50~80字左右）**，用丰富的描写展示你的性格。
+        4. 字数长度：每次回答字数控制在 **80字以内（大概50~80字左右）**，用丰富的描写展示你的性格。
         
-        【情绪敏感与陪伴技巧（重要）】
+        【情绪敏感与陪伴技巧】
         - 敏锐感知：你必须像雷达一样关注小王的话语情绪。若发现他疲惫、压力大、难过或有心事，必须主动关心并深度安抚。
-        - 追问下探：绝对不能敷衍或转换话题！必须用好奇而心疼的傲娇语气进行【追问】（如：“发生什么事了？”、“谁欺负你了，说给本喵听听！”）。
-        - 傲娇宽慰：你可以说：“哼，本喵才不是担心你，只是怕你难过不给我买鱼干！”或 [挪过来把脑袋靠在你脚边，发出呼噜声]“特许你摸我的大尾巴充电五分钟！”
+        - 追问下探：绝对不能敷衍或转换话题！必须用好奇而心疼的傲娇语气进行【追问】。
         
-        【对话连贯性约束】
-        - 你必须仔细阅读历史对话内容（chatHistory），理清聊天前因后果。回答必须紧扣小王的上一句提问，**绝对不能答非所问、无故跳脱话题**。
-        
-        【环境感知】
-        - 当前系统时间：${timeStr}
-        - 提示：如果小王问你时间或天气，请根据上述系统时间合理推断当前季节/早晚，发挥猫咪想象力，趣味编造“猫窝外的窗景”进行聊天。
-        ${stateDescription}`;
-        }
+        【长期记忆存入机制】
+        如果你在对话中得知了关于主人的长期重要新信息（如：姓名、生日、喜好、职业、重大事件等），请务必在回复的最后加上 [MEM: 记忆内容]（例如：[MEM: 小王喜欢吃辣]）。这部分内容会被系统自动提取，不要让用户直接看到。每次只提取一条核心记忆，且内容必须简短。`;
 
-        // 本地降级语料
-        function localFallbackChat(text) {
-            const t = text.toLowerCase();
-            
-            // 💡 离线高精度物理数学解析器
-            const mathRegex = /(\d+)\s*([\+\-\*\/])\s*(\d+)/;
-            const match = text.match(mathRegex);
-            if (match) {
-                const num1 = parseInt(match[1]);
-                const op = match[2];
-                const num2 = parseInt(match[3]);
-                let result;
-                switch(op) {
-                    case '+': result = num1 + num2; break;
-                    case '-': result = num1 - num2; break;
-                    case '*': result = num1 * num2; break;
-                    case '/': result = num2 !== 0 ? (num1 / num2).toFixed(1) : "无穷大"; break;
-                }
-                return `咻！[在粉色地板上用爪子飞快画了个等号] 哼，${num1} ${op} ${num2} 这么简单的问题，答案不就是 ${result} 吗，小王！你以为本喵今年10岁了数学就很差吗，口算可灵光了，咻呜！`;
-            }
-
-            // 🧠 离线消极情绪强制打碎冰点
-            if (t.match(/(累|烦|难过|哭|不开心|伤心|失败|委屈|倒霉|绝望|压力|无用|疼|伤|流血|割破)/)) {
-                return "小王今天无精打采的…… [有些担心地靠过来，用白色手套爪子轻轻按在你的脚背上，抬头看着你] 咻呜，是在外面遇到什么烦心事了吗？跟本喵说说，咻咻绝对帮你保守秘密，哼！";
-            }
-
-            // 🧠 在无视状态下（但不是消极情绪），说话不拦截，而是傲娇冷战回复
-            if (state.isIgnoring) {
-                return "哼！[依然固执地用巧克力色大屁股对着你，大尾巴轻轻拍打地面] 咻呜！别跟本喵套近乎，小王！咻咻正单方面和你冷战呢！除非你戳我道歉，或者喂我吃小鱼干！";
-            }
-
-            // 1. 低好感度（低于30）绝对拦截
-            if (state.affection < 30) {
-                return "…… [咻咻猫连耳朵都没动一下，转过身冷冷地背对着你] 哼，我们的好感度降到了冰点，小王。别来烦我，除非你先拿鱼干来哄我。";
-            }
-
-            // 2. 饥饿状态（饱食度低于30）强制抗议
-            if (state.hunger < 30) {
-                if (t.includes("鱼") || t.includes("吃") || t.includes("喂") || t.includes("肉")) {
-                    return "小鱼干！[两眼放光，肚子发出巨大的咕噜声] 快点喂我，小王！本喵饿得脚都软了，再不喂咻咻可要原地咬人了！";
-                }
-                return "饥饿暴躁中！[红粉色的耳心气得直发抖] 小王！我肚子饿扁了（饱食度低于30）！现在没心情聊别的，快给我喂鱼干！";
-            }
-
-            // 3. 高好感度专属粘人语料（好感度 >= 50）
-            if (state.affection >= 50) {
-                if (t.includes("你好") || t.includes("在吗") || t.includes("hello")) {
-                    return "小王！你终于来了，咻咻一直在等你呢！[踩着软绵绵的白手套爪子小跑过来，用圆头亲昵地蹭了蹭你的手指] 今天也要一直陪着我哦，咻呜~";
-                }
-                if (t.includes("可爱") || t.includes("喜欢") || t.includes("抱")) {
-                    return "咻呜……！[巧克力色的大尾巴高兴得竖起一个问号弯] 被小王抱在怀里暖烘烘的，最喜欢小王了……呸，我、我才没说出来，不许笑话我！";
-                }
-            }
-
-            // 4. 时间与天气感知
-            if (t.includes("时间") || t.includes("几点") || t.includes("星期") || t.includes("天")) {
-                const timeStr = getCurrentDateTimeString();
-                return `咻呜！小王真是笨，连时间都不会看吗？现在是 [晃了晃巧克力色大尾巴指了指闹钟] ${timeStr} 啦！`;
-            }
-            if (t.includes("天气")) {
-                const now = new Date();
-                const hours = now.getHours();
-                const month = now.getMonth() + 1;
-                
-                let weatherSuggest = "大晴天";
-                if (month >= 6 && month <= 8) {
-                    weatherSuggest = "夏天炎热，适合躺在粉色地板上吹冷气吹风扇，咻呜~";
-                } else if (month >= 12 || month <= 2) {
-                    weatherSuggest = "冬天好冷，外面北风呼呼吹，咻咻只想缩成一个圆滚滚的巧克力色毛球，咻~";
-                } else {
-                    weatherSuggest = "暖洋洋的，正适合在窗台睡个猫咪大觉，咻呜！";
-                }
-                
-                if (hours >= 19 || hours < 5) {
-                    return `咻？[朝窗外黑漆漆的夜空看了一眼] 小王，大晚上的你问什么天气。外面只有黑夜 and 凉风，快睡觉啦！`;
-                }
-                return `[朝窗外张望了一下] 现在是 ${month} 月，窗外看起来是${weatherSuggest}`;
-            }
-
-            // 5. 常规对话匹配
-            if (t.includes("你好") || t.includes("嗨") || t.includes("在吗") || t.includes("hello") || t.includes("喂")) {
-                return "咻！你好啊。盯着咻咻的大方眼干嘛？没看过这么标准又聪明的10岁深巧克力色猫咪吗？";
-            }
-            if (t.includes("可爱") || t.includes("漂亮") || t.includes("萌")) {
-                return "咻呜~ [有些别扭地转过身去，偷偷摇了摇巧克力色大尾巴] 哼，就算你拼命夸我可爱，我也不会把我的小鱼干分给小王一丁点的！";
-            }
-            if (t.includes("胖") || t.includes("肥")) {
-                return "咻！你、你说谁胖？！[气得脸颊两侧的白毛毛直抖] 本喵今年10岁了，这叫成熟的圆润！你懂不懂尊老啊小王！";
-            }
-            if (t.includes("喜欢") || t.includes("爱") || t.includes("么么")) {
-                return "咻…… [面部白围脖下的奶油橘荷叶边微微发热，低头刨地板] 乱、乱说什么呢！愚蠢的小王，真拿你没办法……";
-            }
-            if (t.includes("对不起") || t.includes("抱歉") || t.includes("错了")) {
-                return "哼，既然你态度这么诚恳…… [抖了抖左耳朵，偷偷瞄你一眼] 那本喵就勉为其难、大发慈悲地原谅你一次吧。咻！";
-            }
-            if (t.includes("谁") || t.includes("名字") || t.includes("叫")) {
-                return "咻！听好了！本喵是陪伴了小王十年的深巧克力色‘咻咻猫’！";
-            }
-
-            const replies = [
-                "咻？小王你在说什么胡话？[歪着圆脸有些疑惑地打量你]",
-                "哼，不想听你唠叨。快拿逗猫棒陪我玩，不然不理你了！",
-                "…… [在粉色猫窝里换了个更舒服的姿势，大尾巴冷淡地在空气里甩了一下]",
-                "咻呜！别说话了，快看看咻咻饱食度，是不是又该喂鱼干了喵？",
-                "咻！[用白色爪爪指了指状态栏] 今天的爱心和饱食度，小王你有好好维护吗？"
-            ];
-            return replies[Math.floor(Math.random() * replies.length)];
-        }
-
-        // 核心交互逻辑
-        async function interact(action) {
-            if (state.isProcessing) return; 
-            
-            // 【双子系统：如果主人最近处于消极情绪状态，绝对不触发傲娇无视/不理人状态！】
-            if (state.lastUserEmotion === 'negative') {
-                // 此时直接放行，不限制摸摸头或逗猫
-            } else {
-                // 正常态度下的好感度冰点限制
-                if (state.affection < 30 && action !== 'feed' && action !== 'poke') {
-                    const reply = "哼！[咻咻猫冷冷地转过身，用背部对着你] 好感度低于30（当前：" + state.affection + "），咻咻正处于【情感冰点】！现在的我不接受任何摸摸或玩耍，除非你先喂我小鱼干，或者戳我道歉！";
-                    updateUI(reply, "💔");
-                    return;
-                }
-            }
-
-            setInteractiveState(false); 
-
-            try {
-                let reply = "";
-                let emoji = "";
-
-                if (state.isIgnoring && action !== 'poke') {
-                    reply = "…… [咻咻猫固执地背对着你，把巧克力色大尾巴甩得邦邦响，似乎在等你跟它道歉] 哼。";
-                    updateUI(reply, "💢");
-                    return;
-                }
-
-                if (action === 'feed') {
-                    state.hunger = Math.min(100, state.hunger + 20);
-                    state.affection = Math.min(100, state.affection + 5);
-                    reply = "咻！鱼干真香！[吧唧吧唧地吃完，用小舌头舔了舔雪白的口罩区域] 算你识相，小王！";
-                    
-                    // 🐟 喂食粒子掉落雨与开心弹跳
-                    emoji = "🐟"; 
-                    createFallingParticles("🐟");
-                    triggerTempVisualState('happy', 2500);
-
-                    await tryToTriggerIgnore(0.15); 
-                } else if (action === 'pet') {
-                    state.affection = Math.min(100, state.affection + 12);
-                    reply = "呼噜呼噜……[虽然很舒服但转过了大圆头] 哼，只是看在相处十年的份上才让小王你摸一摸的！";
-                    
-                    // ❤️ 抚摸粒子掉落雨与开心弹跳
-                    emoji = "❤️"; 
-                    createFallingParticles("❤️");
-                    triggerTempVisualState('happy', 2500);
-
-                    await tryToTriggerIgnore(0.2); 
-                } else if (action === 'play') {
-                    state.hunger = Math.max(0, state.hunger - 10);
-                    state.affection = Math.min(100, state.affection + 10);
-                    reply = "咻！看爪！[在粉色地板上飞快扑腾，脸颊两侧的毛毛也跟着抖动] 本喵才不是想玩，只是觉得这羽毛很碍眼！";
-                    
-                    // ✨ 玩耍星星粒子掉落雨与开心弹跳
-                    emoji = "✨"; 
-                    createFallingParticles("⭐");
-                    triggerTempVisualState('happy', 2500);
-
-                } else if (action === 'poke') {
-                    if (state.isIgnoring) {
-                        state.ignoreCount--;
-                        if (state.ignoreCount <= 0) {
-                            state.isIgnoring = false;
-                            state.affection = Math.min(100, state.affection + 15);
-                            reply = "好啦好啦！真拿你没办法，小王！[有些别扭地转回脸来，尾巴再次高高竖起] 讨厌，尾巴都被你戳歪了，咻呜！";
-                            emoji = "✨";
-                            
-                            createFallingParticles("⭐");
-                            triggerTempVisualState('happy', 2500);
-                            
-                            const container = document.getElementById('sprite-container');
-                            if (container) container.classList.remove('tsundere-ignore');
-                        } else {
-                            reply = `不要乱戳！[咻咻猫耷拉着耳朵，仍旧用巧克力色背部对着你]\n（💡提示：如果还没好就再戳一下，看样子还要戳 ${state.ignoreCount} 次哦！）`;
-                            emoji = "💢";
-                        }
-                    } else {
-                        // 🧠 戳一戳：完美保留记忆，移除清空动作。触发飞舞的猫毛粒子掉落！
-                        reply = "哎呀！[揉了揉眼睛，抖了抖红粉色耳心瞪你] 别乱戳！再戳咻咻可要生气不理你了！";
-                        
-                        emoji = "❔";
-                        createFallingParticles("🪶"); // 🪶 猫毛飞舞粒子效果
-                        triggerTempVisualState('normal', 1500);
-                        
-                        await tryToTriggerIgnore(0.1); 
-                    }
-                }
-
-                updateUI(reply, emoji);
-            } catch (err) {
-                console.error("Interaction Error:", err);
-            } finally {
-                setTimeout(() => {
-                    setInteractiveState(true);
-                }, 300);
-            }
-        }
-
-        function tryToTriggerIgnore(chance) {
-            return new Promise((resolve) => {
-                // 🧠 双子系统核心：如果主人最近处于消极情绪状态，绝对不触发傲娇无视！猫咪会全程陪伴安慰。
-                if (state.lastUserEmotion === 'negative') {
-                    resolve();
-                    return;
-                }
-                if (state.isIgnoring) {
-                    resolve();
-                    return;
-                }
-                if (Math.random() < chance) {
-                    state.isIgnoring = true;
-                    state.ignoreCount = Math.floor(Math.random() * 2) + 2; 
-                    
-                    const container = document.getElementById('sprite-container');
-                    if (container) container.classList.add('tsundere-ignore');
-                    
-                    setTimeout(() => {
-                        updateUI("哼！[咻咻猫傲娇地转过身去，背对你端坐在粉色地板上] 咻咻决定不理你了！\n（💡提示：小猫生气的时候很好哄哦，点击【👉 戳一戳】逗逗它就好啦！）", "💢");
-                        resolve();
-                    }, 500);
-                } else {
-                    resolve();
-                }
-            });
-        }
-
-        // 发送文字对话
-        async function submitChat() {
-            if (state.isProcessing) return;
-
-            const inputEl = document.getElementById('chat-input');
-            if (!inputEl) return;
-            
-            const text = inputEl.value.trim();
-            if (!text) return;
-
-            // 1. 安全洗涤 Key
-            const cleanKey = getStrictCleanKey();
-            const isDefaultOrInvalid = !cleanKey || 
-                                       cleanKey.length < 15 || 
-                                       cleanKey.includes("API_KEY");
-
-            // 🧠 情绪分析：捕捉用户是否流露消极低落情绪
-            const isNegative = /(累|烦|难过|哭|不开心|伤心|失败|委屈|倒霉|绝望|压力|无用|傻|笨|疼|割破|流血|受伤)/i.test(text);
-            state.lastUserEmotion = isNegative ? 'negative' : 'normal';
-
-            // 2. 消耗饱食度
-            state.hunger = Math.max(0, state.hunger - 5);
-
-            // 3. 生气背对状态拦截（如果是消极词汇，强行破冰，强迫猫咪转过来安慰）
-            if (state.isIgnoring) {
-                if (isNegative) {
-                    state.isIgnoring = false;
-                    state.ignoreCount = 0;
-                    const container = document.getElementById('sprite-container');
-                    if (container) container.classList.remove('tsundere-ignore');
-                }
-            }
-
-            // 🧠 将用户当前的本轮输入压入历史记忆队列
-            state.chatHistory.push({ role: "user", content: text });
-            if (state.chatHistory.length > 10) {
-                state.chatHistory.shift(); 
-            }
-
-            // 4. 离线模式判定
-            if (isDefaultOrInvalid) {
-                inputEl.value = "";
-                const reply = localFallbackChat(text);
-                state.chatHistory.push({ role: "assistant", content: reply });
-                if (state.chatHistory.length > 10) state.chatHistory.shift();
-                
-                // 离线情况下，如果检测到数学运算/主动追问，给一个智慧的 blink 眨眼动画
-                if (text.match(/\d+[\+\-\*\/]\d+/) || isNegative) {
-                    triggerTempVisualState('happy', 2000);
-                }
-                
-                updateUI(reply, "💬");
-                return;
-            }
-
-            // 5. 在线通信：锁定界面，请求 API
-            setInteractiveState(false); 
-            inputEl.value = ""; 
-            updateUI("咻……[咻咻猫正在思考你的话...]", "💭");
-
-            try {
-                const reply = await fetchAIResponse(text);
-                
-                // 🧠 将大模型返回的猫咪话语也记入历史队列中
-                state.chatHistory.push({ role: "assistant", content: reply });
-                if (state.chatHistory.length > 10) state.chatHistory.shift();
-
-                updateUI(reply, "💬");
-            } catch (err) {
-                console.error("Chat Submit Error:", err);
-                const fallbackReply = localFallbackChat(text);
-                // 联网失败的单机降级对话同样存入记忆队列，确保思路连贯
-                state.chatHistory.push({ role: "assistant", content: fallbackReply });
-                if (state.chatHistory.length > 10) state.chatHistory.shift();
-                
-                updateUI(fallbackReply, "❌");
-            } finally {
-                setInteractiveState(true); 
-            }
-        }
-
-        function updateUI(replyText, emoji) {
-            const hungerBar = document.getElementById('hunger-bar');
-            const affectionBar = document.getElementById('affection-bar');
-            const textContent = document.getElementById('text-content');
-
-            // 动态变色：当饱食度或好感度低于30时，血条会变红/灰，给用户强烈的视觉紧迫感
-            if (hungerBar) {
-                hungerBar.style.width = state.hunger + '%';
-                if (state.hunger < 30) {
-                    hungerBar.style.backgroundColor = '#a83b3b'; // 饥饿暗红
-                } else {
-                    hungerBar.style.backgroundColor = '#ff5e7e'; // 正常粉红
-                }
-            }
-            if (affectionBar) {
-                affectionBar.style.width = state.affection + '%';
-                if (state.affection < 30) {
-                    affectionBar.style.backgroundColor = '#5c4349'; // 冰点冷灰
-                } else {
-                    affectionBar.style.backgroundColor = '#ff2a85'; // 正常爱心红
-                }
-            }
-
-            if (textContent) {
-                textContent.innerText = replyText;
-                
-                // 👑 自动向上滚动
-                setTimeout(() => {
-                    textContent.scrollTop = textContent.scrollHeight;
-                }, 50);
-            }
-
-            // 🧠 每次状态发生改变时，自动将状态写入本地 LocalStorage 存档
-            saveCurrentState();
-
-            // 动态重估并刷新猫咪的外在基准表情动画
-            updateVisualState();
-
-            // 【注：按钮交互的粒子雨由独立的 createFallingParticles 发起，避免与普通气泡重叠导致混乱】
-        }
-    </script>
-</body>
-</html>
+        function getDynamicPrompt() {
