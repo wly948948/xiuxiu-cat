@@ -467,6 +467,53 @@
        apiModel: "Qwen/Qwen2.5-7B-Instruct" //    
            };
         // ==========================================
+            // ==========================================
+        // ✍️ 仿游戏 RPG 打字机排版显示引擎
+        // ==========================================
+        let typewriterTimer = null;
+        let currentFullText = "";
+        let isWriting = false;
+
+        function renderText(targetId, text, speed = 25) {
+            const container = document.getElementById(targetId);
+            if (!container) return;
+
+            // 终止上一轮打印
+            if (typewriterTimer) {
+                clearInterval(typewriterTimer);
+            }
+
+            currentFullText = text;
+            isWriting = true;
+            container.innerText = "";
+            
+            let index = 0;
+            typewriterTimer = setInterval(() => {
+                if (index < text.length) {
+                    container.innerText += text[index];
+                    index++;
+                    // 保持滚动条处于最底端
+                    container.scrollTop = container.scrollHeight;
+                } else {
+                    clearInterval(typewriterTimer);
+                    isWriting = false;
+                }
+            }, speed);
+        }
+
+        // 允许玩家点击对话框瞬间跳过打字效果，直接展示全文本
+        function skipTypewriting() {
+            if (isWriting) {
+                if (typewriterTimer) clearInterval(typewriterTimer);
+                const container = document.getElementById('text-content');
+                if (container) {
+                    container.innerText = currentFullText;
+                    container.scrollTop = container.scrollHeight;
+                }
+                isWriting = false;
+            }
+        }
+
 
         // 🧠 记忆读取存档函数
         function loadSavedState() {
