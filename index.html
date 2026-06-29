@@ -166,20 +166,19 @@
             100% { transform: translateY(-4px); } 
         }
 
-        /* 强制重置所有特殊表情图层，规避浏览器渲染引擎的 display 转换冲突 */
+        /* 强制重置所有表情图层 */
         .eye-sleepy, .eye-angry, .eyebrow-angry, .eye-happy, 
         .ear-sleepy, .ear-angry, .blush-happy {
             display: none !important;
         }
 
-        /* 犯困状态强制显示 */
+        /* 各表情状态显示 */
         #sprite-container.state-sleepy .eye-sleepy,
         #sprite-container.state-sleepy .ear-sleepy { display: inline !important; }
         #sprite-container.state-sleepy .eye-open,
         #sprite-container.state-sleepy .eye-open-pupil,
         #sprite-container.state-sleepy .ear-normal { display: none !important; }
 
-        /* 生气状态强制显示 */
         #sprite-container.state-angry .eye-angry,
         #sprite-container.state-angry .eyebrow-angry,
         #sprite-container.state-angry .ear-angry { display: inline !important; }
@@ -187,7 +186,6 @@
         #sprite-container.state-angry .eye-open-pupil,
         #sprite-container.state-angry .ear-normal { display: none !important; }
 
-        /* 开心撒娇状态强制显示 */
         #sprite-container.state-happy .eye-happy,
         #sprite-container.state-happy .blush-happy { display: inline !important; }
         #sprite-container.state-happy .eye-open,
@@ -213,7 +211,7 @@
             color: #ff99bb; 
             font-weight: bold;
             letter-spacing: 1px;
-            flex-shrink: 0; /* 名字固定高度，决不被压缩 */
+            flex-shrink: 0;
         }
 
         /* 自适应像素滚动对话栏 */
@@ -221,11 +219,11 @@
             font-size: 13px;
             line-height: 1.4;
             color: #ffd1dc; 
-            overflow-y: auto; /* 文本过长时自动触发垂直滚动 */
+            overflow-y: auto; 
             flex-grow: 1;
         }
 
-        /* 🎨 16-bit 专属复古风滚动条美化 */
+        /* 🎨 16-bit 专属复古风滚动条 */
         #text-content::-webkit-scrollbar {
             width: 6px;
         }
@@ -236,6 +234,33 @@
             background: #ab825f;
             border: 1px solid #4e3522;
             border-radius: 2px;
+        }
+
+        /* 👑 16-bit 物理重力下落粒子动画 */
+        .drop-particle {
+            position: absolute;
+            font-size: 22px;
+            pointer-events: none;
+            z-index: 100;
+            animation: fallDown 1.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+
+        @keyframes fallDown {
+            0% {
+                transform: translateY(-40px) rotate(0deg) scale(0.6);
+                opacity: 0;
+            }
+            15% {
+                opacity: 1;
+                transform: translateY(10px) rotate(45deg) scale(1.1);
+            }
+            85% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(220px) rotate(360deg) scale(0.8);
+                opacity: 0;
+            }
         }
 
         #buttons-panel {
@@ -434,19 +459,19 @@
 
     <script>
         // ==========================================
-        // ⚙️ 接口配置
+        // ⚙️ 接口配置（若需免费，极力推荐换成 硅基流动：https://siliconflow.cn）
         // ==========================================
-       const CONFIG = {
-       apiKey: "sk-ephvdecvurhviermvzutqqegqessydmogyjjhlgzghzdxvwz", 
-       apiUrl: "https://api.siliconflow.cn/v1", 
-       apiModel: "Qwen/Qwen2.5-7B-Instruct" //    
-           };
+        const CONFIG = {
+            apiKey: "sk-7ab387a1cb474f6db6976ea3a8aef8f5", // 👈 填入您的 API Key（如无余额将自动无缝开启超能单机版）
+            apiUrl: "https://api.deepseek.com/v1", 
+            apiModel: "deepseek-chat" 
+        };
         // ==========================================
 
         // 🧠 记忆读取存档函数
         function loadSavedState() {
             try {
-                const saved = localStorage.getItem('xiuxiu_pet_state_v7');
+                const saved = localStorage.getItem('xiuxiu_pet_state_v8');
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     return {
@@ -456,7 +481,7 @@
                         ignoreCount: parsed.ignoreCount !== undefined ? parsed.ignoreCount : 0,
                         isProcessing: false,
                         chatHistory: parsed.chatHistory || [],
-                        lastUserEmotion: parsed.lastUserEmotion || 'normal' // 🧠 记录上一次用户情绪分类 ('normal' | 'negative')
+                        lastUserEmotion: parsed.lastUserEmotion || 'normal' // 🧠 双子系统：记录上一次用户情绪分类 ('normal' | 'negative')
                     };
                 }
             } catch (e) {
@@ -487,7 +512,7 @@
                     chatHistory: state.chatHistory,
                     lastUserEmotion: state.lastUserEmotion
                 };
-                localStorage.setItem('xiuxiu_pet_state_v7', JSON.stringify(toSave));
+                localStorage.setItem('xiuxiu_pet_state_v8', JSON.stringify(toSave));
             } catch (e) {
                 console.error("存档写入失败:", e);
             }
@@ -547,7 +572,7 @@
             setVisualState('normal');
         }
 
-        // 瞬时兴奋反应器：在完成喂食/玩耍/抚摸后，临时开怀大笑 2.5 秒，然后恢复基础心情
+        // 瞬时兴奋反应器：在完成喂食/玩耍/抚摸后，开启 16-bit 像素快乐弹跳
         let tempEmotionTimeout = null;
         function triggerTempVisualState(stateName, duration = 2500) {
             if (tempEmotionTimeout) clearTimeout(tempEmotionTimeout);
@@ -555,6 +580,35 @@
             tempEmotionTimeout = setTimeout(() => {
                 updateVisualState();
             }, duration);
+        }
+
+        // 👑 16-bit 像素粒子下落系统（实现鱼雨、爱心雨、星星雨和漫天飞舞的猫毛）
+        function createFallingParticles(emojiType) {
+            const screen = document.getElementById('game-screen');
+            if (!screen) return;
+            
+            // 每次生成 6 枚随风飘舞旋转而落的精美像素粒子
+            for (let i = 0; i < 6; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'drop-particle';
+                particle.innerText = emojiType;
+                
+                // 随机水平跨度
+                const randomX = Math.random() * 80 + 10; // 限制在 10% 到 90%
+                particle.style.left = `${randomX}%`;
+                particle.style.top = `0px`; 
+                
+                // 增加随机微小延迟，制造落叶雨的自然错落感
+                const delay = Math.random() * 0.4;
+                particle.style.animationDelay = `${delay}s`;
+                
+                screen.appendChild(particle);
+                
+                // 播放完毕后自动在内存中卸载 DOM，防卡顿
+                setTimeout(() => {
+                    particle.remove();
+                }, 1500);
+            }
         }
 
         // 获取时间
@@ -656,7 +710,7 @@
             }
         }
 
-        // 动态构建提示词
+        // 动态构建提示词：引入消极情感感知分支
         function getSystemPrompt() {
             const timeStr = getCurrentDateTimeString();
             
@@ -673,7 +727,7 @@
                 stateDescription += `\n- 【特殊生理状态：极度饥饿（饱食度：${state.hunger}/100 < 30）】。无论好感度多高，饥饿都会让你变得很暴躁，肚子咕咕叫，频繁催促小王喂你鱼干。`;
             }
 
-            // 🧠 如果主人处于消极态度，开启【情绪敏感模式】
+            // 🧠 核心：双子系统感知，如果主人处于消极态度，要求大模型必须极度温柔，主动关心！
             if (state.lastUserEmotion === 'negative') {
                 stateDescription += `\n- ⚠️【紧急心境状态：小王目前心情极度低落/烦躁/委屈/劳累】！你对他有一种与生俱来的、长达十年的极强情感共鸣。在这里，你必须瞬间放下面子和所有冷漠！你的语气要变得十分心疼、温柔。虽然还要嘴硬说几句‘哼，本喵才不是担心你呢’，但必须主动深度追问他发生了什么委屈的事。通过小心翼翼的蹭蹭、贴贴和呼噜声给予他安全感。`;
             }
@@ -842,8 +896,9 @@
                     state.affection = Math.min(100, state.affection + 5);
                     reply = "咻！鱼干真香！[吧唧吧唧地吃完，用小舌头舔了舔雪白的口罩区域] 算你识相，小王！";
                     
-                    // 🐟 喂食特效与开心弹跳
+                    // 🐟 喂食粒子掉落雨与开心弹跳
                     emoji = "🐟"; 
+                    createFallingParticles("🐟");
                     triggerTempVisualState('happy', 2500);
 
                     await tryToTriggerIgnore(0.15); 
@@ -851,8 +906,9 @@
                     state.affection = Math.min(100, state.affection + 12);
                     reply = "呼噜呼噜……[虽然很舒服但转过了大圆头] 哼，只是看在相处十年的份上才让小王你摸一摸的！";
                     
-                    // ❤️ 抚摸特效与开心弹跳
+                    // ❤️ 抚摸粒子掉落雨与开心弹跳
                     emoji = "❤️"; 
+                    createFallingParticles("❤️");
                     triggerTempVisualState('happy', 2500);
 
                     await tryToTriggerIgnore(0.2); 
@@ -861,8 +917,9 @@
                     state.affection = Math.min(100, state.affection + 10);
                     reply = "咻！看爪！[在粉色地板上飞快扑腾，脸颊两侧的毛毛也跟着抖动] 本喵才不是想玩，只是觉得这羽毛很碍眼！";
                     
-                    // ✨ 玩耍特效与开心弹跳
+                    // ✨ 玩耍星星粒子掉落雨与开心弹跳
                     emoji = "✨"; 
+                    createFallingParticles("⭐");
                     triggerTempVisualState('happy', 2500);
 
                 } else if (action === 'poke') {
@@ -874,6 +931,7 @@
                             reply = "好啦好啦！真拿你没办法，小王！[有些别扭地转回脸来，尾巴再次高高竖起] 讨厌，尾巴都被你戳歪了，咻呜！";
                             emoji = "✨";
                             
+                            createFallingParticles("⭐");
                             triggerTempVisualState('happy', 2500);
                             
                             const container = document.getElementById('sprite-container');
@@ -883,13 +941,11 @@
                             emoji = "💢";
                         }
                     } else {
-                        // 🧠 戳一戳：作为隐藏机制，强行清零对话记忆，帮它从被污染的状态中“醒脑”
-                        state.chatHistory = []; 
-                        state.lastUserEmotion = 'normal'; // 重置心情
-                        reply = "哎呀！[揉了揉眼睛，摇了摇巧克力色圆头，瞬间忘掉了刚刚聊过的一切] 别乱戳！咻咻都被你戳得记不清事了，小王！";
-                        emoji = "❔";
+                        // 🧠 戳一戳：完美保留记忆，移除清空动作。触发飞舞的猫毛粒子掉落！
+                        reply = "哎呀！[揉了揉眼睛，抖了抖红粉色耳心瞪你] 别乱戳！再戳咻咻可要生气不理你了！";
                         
-                        // 戳一戳会触发短暂睁大眼（normal）然后恢复
+                        emoji = "❔";
+                        createFallingParticles("🪶"); // 🪶 猫毛飞舞粒子效果
                         triggerTempVisualState('normal', 1500);
                         
                         await tryToTriggerIgnore(0.1); 
@@ -908,7 +964,7 @@
 
         function tryToTriggerIgnore(chance) {
             return new Promise((resolve) => {
-                // 🧠 双子系统核心：如果主人最近处于消极情绪状态，或者当前输入有消极色彩，绝对不触发傲娇无视！
+                // 🧠 双子系统核心：如果主人最近处于消极情绪状态，绝对不触发傲娇无视！猫咪会全程陪伴安慰。
                 if (state.lastUserEmotion === 'negative') {
                     resolve();
                     return;
@@ -1041,7 +1097,7 @@
             if (textContent) {
                 textContent.innerText = replyText;
                 
-                // 👑 自动向上滚动核心：每次渲染新对白，容器都自动滑到底部，前面的字整齐上滚
+                // 👑 自动向上滚动
                 setTimeout(() => {
                     textContent.scrollTop = textContent.scrollHeight;
                 }, 50);
@@ -1053,18 +1109,7 @@
             // 动态重估并刷新猫咪的外在基准表情动画
             updateVisualState();
 
-            if (emoji) {
-                const screen = document.getElementById('game-screen');
-                if (screen) {
-                    const effect = document.createElement('div');
-                    effect.className = 'emoji-effect';
-                    effect.innerText = emoji;
-                    effect.style.left = state.isIgnoring ? '40%' : '60%';
-                    effect.style.top = '50%';
-                    screen.appendChild(effect);
-                    setTimeout(() => effect.remove(), 1000);
-                }
-            }
+            // 【注：按钮交互的粒子雨由独立的 createFallingParticles 发起，避免与普通气泡重叠导致混乱】
         }
     </script>
 </body>
