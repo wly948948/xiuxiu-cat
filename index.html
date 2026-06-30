@@ -436,11 +436,14 @@
         // ==========================================
         // ⚙️ 接口配置
         // ==========================================
-       const CONFIG = {
-       apiKey: "sk-ephvdecvurhviermvzutqqegqessydmogyjjhlgzghzdxvwz", 
-       apiUrl: "https://api.siliconflow.cn/v1", 
-       apiModel: "Qwen/Qwen2.5-7B-Instruct" //    
-           };
+    // 修改为请求您刚刚创建的 Cloudflare 代理地址，且【删掉】Authorization 请求头
+fetch("https://fancy-bird-6024.wly948948.workers.dev", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json" // 这里不再需要填任何 API Key！
+  },
+  body: JSON.stringify(yourData)
+})
         // ==========================================
         // ✍️ 仿游戏 RPG 打字机排版显示引擎（优化版）
 // ==========================================
