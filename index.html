@@ -655,28 +655,18 @@
             }
         }
 
-       // 调用大模型
+       // ==========================================
+        // 调用大模型
+        // ==========================================
         async function fetchAIResponse(userMessage) {
             const cleanKey = getStrictCleanKey();
-            // ... 前面保持不变 ...
 
-            try {
-                // 请求指向您的安全 Hugging Face 代理
-                const response = await fetch(CONFIG.apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        // 🔒 增加下面这一行：发送约定好的鉴权暗号，以便通过服务端的验证
-                        'X-Xiuxiu-Token': 'SAFE_CLOUDFLARE_PROXY_ACTIVE' 
-                    },
-                    body: JSON.stringify({
-                        model: CONFIG.apiModel,
-                        messages: messagesPayload,
-                        max_tokens: 150,
-                        temperature: 0.6 
-                    }),
-                    signal: controller.signal
-                });
+            if (!cleanKey || cleanKey.length < 15 || cleanKey.includes("API_KEY")) {
+                return localFallbackChat(userMessage);
+            }
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 6000); 
 
             // 构建带有历史记忆的 messages 负载
             const messagesPayload = [
@@ -685,10 +675,12 @@
             ];
 
             try {
+                // 请求指向您的安全 Hugging Face 代理
                 const response = await fetch(CONFIG.apiUrl, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-Xiuxiu-Token': 'SAFE_CLOUDFLARE_PROXY_ACTIVE' // 🔒 完美的密保暗号
                     },
                     body: JSON.stringify({
                         model: CONFIG.apiModel,
@@ -699,8 +691,6 @@
                     signal: controller.signal
                 });
 
-                clearTimeout(timeoutId);
-
                 if (!response.ok) {
                     const errText = await response.text();
                     throw new Error(`[HTTP ${response.status}] - ${errText}`);
@@ -708,8 +698,7 @@
                 const data = await response.json();
                 return data.choices[0].message.content;
             } catch (err) {
-                clearTimeout(timeoutId);
-                console.error("API 报错:", err);
+                console.error("Chat Submit Error:", err);
                 
                 if (err.name === 'AbortError') {
                     return "[连接超时，咻咻自动切换回本地模式] 哼，半天没反应，咻咻不想等了！\n" + localFallbackChat(userMessage);
